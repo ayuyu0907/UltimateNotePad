@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8fb">
+  <title>UltimateNotePad</title>
+  <!-- 既存のスタイルは維持。追加のアニメーションは別ファイルで管理します。 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/editor-fit.css') }}">
+  <!-- 遷移先のメイン領域を描画してからView Transitionを開始する -->
+  <link rel="expect" href="#main-content" blocking="render">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="メモ一覧">
+      <header class="sidebar-header">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">U</span>
+          <div>
+            <strong>UltimateNotePad</strong>
+            <span class="brand-subtitle">Your space to think.</span>
+          </div>
+        </div>
+        <button
+          id="create-note-open"
+          class="icon-button"
+          type="button"
+          title="新しいメモを作成"
+          aria-label="新しいメモを作成"
+          aria-haspopup="dialog"
+          aria-controls="create-note-dialog"
+        >＋</button>
+      </header>
+
+      <div class="sidebar-content">
+        <div class="search-wrap">
+          <span aria-hidden="true">⌕</span>
+          <input
+            type="search"
+            placeholder="メモを検索（後日実装）"
+            aria-label="メモを検索"
+            disabled
+          >
+        </div>
+        <div class="section-heading">
+          <span>すべてのメモ</span>
+          <span class="count">{{ notes|default([])|length }}</span>
+        </div>
+        <nav class="note-list" aria-label="メモ">
+          {% for note in notes|default([]) %}
+          <a
+            href="{{ url_for('index', id=note.id) }}"
+            class="note-card{% if selected_note and selected_note.id == note.id %} active{% endif %}"
+            {% if selected_note and selected_note.id == note.id %}aria-current="page"{% endif %}
+          >
+            <span class="note-card-title">{{ note.title }}</span>
+            <span class="note-card-preview">{{ note.content[:60] if note.content else '本文なし' }}</span>
+            <time
+              class="note-card-date"
+              data-utc="{{ note.updated_at|default('') }}"
+            >{{ note.updated_at|default('') }}</time>
+          </a>
+          {% else %}
+          <div class="empty-list">
+            <span class="empty-icon" aria-hidden="true">▤</span>
+            <strong>メモはまだありません</strong>
+            <span>右上の「＋」から最初のメモを作成しましょう。</span>
+          </div>
+          {% endfor %}
+        </nav>
+      </div>
+      <footer class="sidebar-footer">
+        <span class="status-dot"></span>
+        UltimateNotePad
+        <span class="footer-version">Development Build</span>
+      </footer>
+    </aside>
+
+    <main class="workspace" id="main-content">
+      <div class="topbar">
+        <span class="breadcrumb">Workspace <span aria-hidden="true">/</span> メモ</span>
+        {% if selected_note %}
+        <span
+          id="save-status"
+          class="save-status"
+          data-state="saved"
+          role="status"
+          aria-live="polite"
+        >保存済み</span>
+        {% else %}
+        <span class="mode-label">メモを選択してください</span>
+        {% endif %}
+      </div>
+
+      <section class="editor-panel" aria-label="メモ編集画面">
+        {% if selected_note %}
+        <!-- メタ情報はタイトルから離して右上に小さく表示 -->
+        <div class="editor-metadata">
+          <time
+            class="last-updated"
+            data-utc="{{ selected_note.updated_at|default('') }}"
+          >最終更新：{{ selected_note.updated_at|default('') }}</time>
+        </div>
+
+        <!-- 見出しを重複表示せず、タイトル入力欄を見出しとして扱う -->
+        <form
+          class="note-edit-form"
+          method="POST"
+          action="{{ url_for('update_note', note_id=selected_note.id) }}"
+        >
+          <label for="note-title" class="visually-hidden">メモのタイトル</label>
+          <input
+            id="note-title"
+            class="note-title-input"
+            type="text"
+            name="title"
+            value="{{ selected_note.title }}"
+            placeholder="無題のメモ"
+            autocomplete="off"
+            required
+          >
+
+          <div class="editor-toolbar" aria-label="書式ツール（未実装）">
+            <button type="button" title="太字（後日実装）" disabled><strong>B</strong></button>
+            <button type="button" title="斜体（後日実装）" disabled><em>I</em></button>
+            <button type="button" title="下線（後日実装）" disabled><u>U</u></button>
+            <span class="toolbar-divider"></span>
+            <button type="button" title="見出し（後日実装）" disabled>H</button>
+            <button type="button" title="箇条書き（後日実装）" disabled>☷</button>
+          </div>
+
+          <label for="note-content" class="visually-hidden">メモの本文</label>
+          <textarea
+            id="note-content"
+            class="note-content-input"
+            name="content"
+            rows="6"
+            placeholder="ここにメモを書き始めましょう..."
+          >{{ selected_note.content|default('', true) }}</textarea>
+
+          <div class="editor-actions">
+            <button class="save-button" type="submit">変更を保存</button>
+          </div>
+        </form>
+        {% else %}
+        <div class="welcome-editor">
+          <span class="welcome-symbol" aria-hidden="true">✦</span>
+          <h1>書き留める、整理する。</h1>
+          <p>左側からメモを選ぶか、新しいメモを作成してください。</p>
+          <button type="button" class="save-button" id="welcome-create-note">
+            ＋ 新しいメモを作成
+          </button>
+        </div>
+        {% endif %}
+      </section>
+
+      <footer class="workspace-footer">
+        {% if selected_note %}
+        入力内容は自動的に保存されます。手動保存も利用できます。
+        {% else %}
+        UltimateNotePad — Your space to think.
+        {% endif %}
+      </footer>
+    </main>
+  </div>
+
+  <dialog
+    id="create-note-dialog"
+    class="create-note-dialog"
+    aria-labelledby="create-note-heading"
+  >
+    <div class="dialog-header">
+      <div>
+        <h2 id="create-note-heading">新しいメモ</h2>
+        <p>アイデアを書き留めましょう。</p>
+      </div>
+      <button
+        id="create-note-close"
+        class="dialog-close"
+        type="button"
+        aria-label="閉じる"
+      >×</button>
+    </div>
+
+    <form
+      class="dialog-form"
+      method="POST"
+      action="{{ url_for('create_note') }}"
+    >
+      <div class="dialog-field">
+        <label for="create-title">タイトル <span>*</span></label>
+        <input
+          id="create-title"
+          name="title"
+          type="text"
+          placeholder="例：今日の授業ノート"
+          autocomplete="off"
+          required
+        >
+      </div>
+      <div class="dialog-field">
+        <label for="create-content">本文（任意）</label>
+        <textarea
+          id="create-content"
+          name="content"
+          rows="4"
+          placeholder="メモの内容を入力..."
+        ></textarea>
+      </div>
+      <div class="dialog-actions">
+        <button id="create-note-cancel" type="button" class="dialog-cancel">キャンセル</button>
+        <button type="submit" class="dialog-submit">＋ メモを作成</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- 日本時間をOS・ブラウザのタイムゾーンに関係なく表示する -->
+  <script src="{{ url_for('static', filename='js/date-jst.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/autosave.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/create-modal.js') }}"></script>
+  <script>
+    document.querySelector("#welcome-create-note")
+      ?.addEventListener("click", () => {
+        document.querySelector("#create-note-open")?.click();
+      });
+  </script>
+</body>
+</html>

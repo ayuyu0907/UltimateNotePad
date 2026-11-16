@@ -1,0 +1,483 @@
+:root { color-scheme: light; --ink:#1e293b; --muted:#7b8798; --line:#e9edf2; --canvas:#f7f8fb; --accent:#354dd7; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI","Noto Sans JP",sans-serif; background:var(--canvas); color:var(--ink); -webkit-font-smoothing:antialiased; }
+button,input { font:inherit; }
+button:disabled,input:disabled { cursor:not-allowed; }
+.app-shell { display:grid; grid-template-columns:296px minmax(0,1fr); min-height:100vh; }
+.sidebar { display:flex; flex-direction:column; background:#fff; border-right:1px solid var(--line); min-height:100vh; }
+.sidebar-header { padding:30px 20px 24px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.brand { display:flex; align-items:center; gap:11px; min-width:0; }
+.brand-mark { display:grid;place-items:center;background:#273457;color:#fff;border-radius:12px;font-weight:800;font-size:18px;width:42px;height:42px; flex-shrink:0; }
+.brand strong { display:block; font-size:13px; letter-spacing:-.4px; white-space:nowrap; }
+.brand-subtitle { display:block; color:#9aa4b3; font-size:10px; margin-top:4px; }
+.icon-button { width:30px;height:30px;border:1px solid #e7ebf1;background:#fff;border-radius:9px;color:#8a93a2;font-size:20px;line-height:1; }
+.sidebar-content { flex:1; padding:0 14px; }
+.search-wrap { display:flex;align-items:center;gap:10px;background:#f5f7f9;border:1px solid #f0f1f4;border-radius:10px;padding:11px 13px;color:#9aa4b3; }
+.search-wrap span { font-size:19px; line-height:14px; }
+.search-wrap input { width:100%; border:0;outline:0;background:transparent;font-size:12px;color:var(--muted); }
+.search-wrap input::placeholder { color:#a3acb8; }
+.section-heading { display:flex;justify-content:space-between;align-items:center;padding:27px 11px 11px;font-weight:700;font-size:12px; }
+.count { color:#8894a5;background:#f2f4f7;border-radius:8px;padding:3px 8px;font-weight:500; }
+.note-list { display:flex;flex-direction:column;gap:4px; }
+.note-card { padding:15px 14px; border:1px solid transparent; border-radius:12px;display:flex;flex-direction:column;gap:7px;min-height:103px; text-decoration: none; color: inherit; }
+.note-card.active { background:#eef1ff;border-color:#e5e9ff; }
+.note-card-title { font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.note-card-preview { font-size:11px;color:#8b96a5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.note-card-date { font-size:10px;color:#a2abba; }
+.empty-list { display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:35px 16px;color:#a1aab9;font-size:11px;line-height:1.6; }
+.empty-list strong { font-size:12px;color:#667286; }
+.empty-icon {font-size:28px;color:#b6c0d1;}
+.sidebar-footer { border-top:1px solid var(--line); padding:18px 20px; font-size:10px; color:#8e9baa; display:flex;align-items:center;gap:8px; }
+.status-dot { height:7px;width:7px;border-radius:50%;background:#51ad87; }
+.footer-version { margin-left:auto; }
+.workspace { display:flex;flex-direction:column;min-width:0;max-height:100vh; }
+.topbar { display:flex;justify-content:space-between;align-items:center;padding:26px 42px;min-height:82px; }
+.breadcrumb { font-size:12px;color:#7e8a9e; }
+.breadcrumb span {padding:0 10px;color:#bec4ce;}
+.mode-label { color:#9ba6b5;font-size:11px;border:1px solid #e7ebf1;border-radius:20px;padding:7px 12px;background:#fff; }
+.editor-panel {background:#fff;border:1px solid #e9edf2;border-radius:18px;margin:0 40px;min-height:400px;flex:1;padding:56px max(35px,10%);box-shadow:0 8px 30px rgba(22,32,53,.025);overflow:auto;}
+.editor-topline { display:flex;justify-content:space-between;align-items:center; }
+.eyebrow {color:var(--accent);font-size:10px;font-weight:800;letter-spacing:2px;}
+.last-updated {color:#a1aab7;font-size:11px;}
+.note-title {font-size:clamp(26px,3vw,38px);font-weight:750;letter-spacing:-1.3px;margin:17px 0 24px;}
+.editor-toolbar { display:flex;gap:6px;align-items:center;border-block:1px solid #edf0f4;padding:12px 0;margin-bottom:28px; }
+.editor-toolbar button {background:transparent;border:0;border-radius:7px;min-width:33px;height:32px;color:#a1aab8;font-size:14px; }
+.toolbar-divider {width:1px;height:18px;background:#e2e6ed;margin-inline:8px;}
+.editor-content {white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px;line-height:1.9;color:#4d5b71;}
+.welcome-editor {min-height:320px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;}
+.welcome-symbol {color:#5366dc;font-size:34px;}
+.welcome-editor h1 {font-size:clamp(25px,3vw,36px);line-height:1.35;letter-spacing:-1px;margin:23px 0 12px;}
+.welcome-editor p {font-size:14px;color:#8793a3;line-height:1.8;margin:0;}
+.welcome-tip {font-size:11px;color:#697cb6;background:#eef1ff;padding:10px 13px;border-radius:8px;margin-top:28px;}
+.workspace-footer {padding:19px 42px 24px;font-size:11px;color:#a0a9b7;}
+@media (max-width:780px) { .app-shell {grid-template-columns:1fr;} .sidebar {min-height:0;border-right:0;border-bottom:1px solid var(--line);} .sidebar-header {padding:20px 18px 15px;} .sidebar-content {padding:0 14px 14px;} .section-heading {padding-top:17px;} .note-list {max-height:170px;overflow:auto;} .note-card {min-height:84px;} .sidebar-footer {display:none;} .workspace {max-height:none;min-height:480px;} .topbar {padding:17px 18px;min-height:60px;} .editor-panel {margin:0 12px;padding:30px 24px;min-height:350px;} .workspace-footer {padding:17px 20px;line-height:1.6;} }
+
+.note-edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.field-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.note-title-input {
+    width: 100%;
+    padding: 12px 0;
+    border: none;
+    border-bottom: 1px solid #e2e8f0;
+    outline: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: clamp(22px, 3vw, 32px);
+    font-weight: 700;
+}
+
+.note-content-input {
+    width: 100%;
+    min-height: 260px;
+    padding: 14px 0;
+    resize: vertical;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 15px;
+    line-height: 1.8;
+}
+
+.editor-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+.save-button {
+    border: none;
+    border-radius: 10px;
+    padding: 12px 20px;
+    background: #172033;
+    color: #ffffff;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.save-button:hover {
+    background: #334155;
+}
+
+.save-button:focus-visible,
+.note-title-input:focus-visible,
+.note-content-input:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 3px;
+}
+
+
+.save-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 600;
+    transition: background 0.2s, color 0.2s;
+}
+
+.save-status::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.save-status[data-state="saved"] {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.save-status[data-state="dirty"] {
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+.save-status[data-state="saving"] {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.save-status[data-state="error"] {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+
+/* 新規メモ作成エリア */
+.create-note {
+    margin-bottom: 20px;
+}
+
+.create-note-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 14px;
+    background: #172033;
+    color: #fff;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+    transition: background 0.2s;
+}
+
+.create-note-trigger::-webkit-details-marker {
+    display: none;
+}
+
+.create-note-trigger:hover {
+    background: #334155;
+}
+
+.create-note-trigger:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 3px;
+}
+
+.create-note-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    margin-top: 10px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+}
+
+.create-note-form label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+}
+
+.create-note-form input {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    padding: 11px 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    color: #172033;
+    font: inherit;
+    font-size: 13px;
+    outline: none;
+}
+
+.create-note-form input:focus {
+    border-color: #2563eb;
+}
+
+.create-note-form button {
+    width: 100%;
+    padding: 11px;
+    background: #172033;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.create-note-form button:hover {
+    background: #334155;
+}
+
+
+/* 新規作成モーダル */
+.create-note-dialog {
+    width: min(460px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    padding: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    background: #ffffff;
+    color: #172033;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.18);
+    overflow-y: auto;
+}
+
+.create-note-dialog::backdrop {
+    background: rgba(15, 23, 42, 0.58);
+    backdrop-filter: blur(3px);
+}
+
+.dialog-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 26px 26px 0;
+}
+
+.dialog-header h2 {
+    margin: 0;
+    font-size: 21px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.dialog-header p {
+    margin: 7px 0 0;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.dialog-close {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #64748b;
+    font-size: 23px;
+    cursor: pointer;
+}
+
+.dialog-close:hover {
+    background: #f1f5f9;
+    color: #172033;
+}
+
+.dialog-form {
+    padding: 25px 26px 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.dialog-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dialog-field label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+}
+
+.dialog-field label span {
+    color: #dc2626;
+}
+
+.dialog-field input,
+.dialog-field textarea {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    padding: 12px 13px;
+    border: 1px solid #dce2ea;
+    border-radius: 9px;
+    background: #ffffff;
+    color: #172033;
+    font: inherit;
+    font-size: 14px;
+    outline: none;
+}
+
+.dialog-field textarea {
+    resize: vertical;
+    min-height: 105px;
+    line-height: 1.6;
+}
+
+.dialog-field input:focus,
+.dialog-field textarea:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.10);
+}
+
+.dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 12px;
+    border-top: 1px solid #edf0f3;
+}
+
+.dialog-actions button {
+    border: 0;
+    border-radius: 9px;
+    padding: 11px 15px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.dialog-cancel {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.dialog-submit {
+    background: #172033;
+    color: white;
+}
+
+.dialog-submit:hover {
+    background: #334155;
+}
+
+.dialog-actions button:focus-visible,
+.dialog-close:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+    .dialog-header {
+        padding: 22px 20px 0;
+    }
+
+    .dialog-form {
+        padding: 20px;
+    }
+
+    .dialog-actions button {
+        flex: 1;
+    }
+}
+
+/* エディター上部の余白とメタ情報の整列 */
+.editor-panel .editor-metadata {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 20px;
+  margin: 0 0 32px;
+}
+
+.editor-panel .editor-metadata .last-updated {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+/* ラベルは画面上では非表示、スクリーンリーダーには残す */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* タイトル入力欄を唯一の大きなタイトルにする */
+.editor-panel .note-edit-form .note-title-input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  padding: 0 0 14px;
+  margin: 0 0 28px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: #172033;
+  font: inherit;
+  font-size: clamp(28px, 3vw, 36px);
+  font-weight: 700;
+  line-height: 1.3;
+  box-shadow: none;
+  outline: none;
+}
+
+.editor-panel .note-edit-form .note-title-input:focus {
+  border-bottom-color: #cbd5e1;
+  box-shadow: none;
+  outline: none;
+}
+
+.editor-panel .note-edit-form .note-title-input::placeholder {
+  color: #94a3b8;
+}
+
+/* タイトル・ツールバー・本文の間隔を整理 */
+.editor-panel .note-edit-form .editor-toolbar {
+  margin-top: 0;
+  margin-bottom: 24px;
+}
+
+.editor-panel .note-edit-form .note-content-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  line-height: 1.8;
+}

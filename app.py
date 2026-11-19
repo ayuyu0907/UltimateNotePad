@@ -100,6 +100,42 @@ def update_note(note_id):
             return redirect(url_for("index", id=note_id))
         
 
+@app.route("/notes/<int:note_id>/delete", methods=["POST"])
+def delete_note(note_id):
+
+    connection = None
+
+    try:
+        connection = sqlite3.connect("data/notes.db")
+        cursor = connection.cursor()
+
+        cursor.execute(
+            "DELETE FROM notes WHERE id = ?",
+            (note_id,)
+        )
+
+        connection.commit()
+
+        rows = cursor.rowcount
+        if rows == 0:
+            return "メモが見つかりません", 404
+
+        return redirect(url_for("index"))
+
+    except sqlite3.Error as error:
+        print(f"データベースエラー: {error}")
+
+        if connection is not None:
+            connection.rollback()
+
+        return "データベースエラーが発生しました", 500
+
+    finally:
+        if connection is not None:
+            connection.close()
+        pass
+
+
 def load_notes():
     connection = sqlite3.connect("data/notes.db")
     connection.row_factory = sqlite3.Row

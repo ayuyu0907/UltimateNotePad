@@ -481,3 +481,102 @@ button:disabled,input:disabled { cursor:not-allowed; }
   min-width: 0;
   line-height: 1.8;
 }
+
+
+/* メモ削除ボタン */
+.delete-button {
+    padding: 10px 15px;
+    border: 1px solid #fecaca;
+    border-radius: 9px;
+    background: #fff;
+    color: #b91c1c;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 160ms ease, transform 160ms ease;
+}
+
+.delete-button:hover {
+    background: #fef2f2;
+}
+
+.delete-button:active {
+    transform: scale(0.97);
+}
+
+/* 削除確認モーダル */
+.delete-note-dialog {
+    width: min(420px, calc(100vw - 32px));
+    padding: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #fff;
+    color: #172033;
+    box-shadow: 0 24px 65px rgba(0, 0, 0, .2);
+}
+
+.delete-note-dialog::backdrop {
+    background: rgba(15, 23, 42, .55);
+    backdrop-filter: blur(3px);
+}
+
+.delete-dialog-body {
+    padding: 26px;
+}
+
+.delete-dialog-body h2 {
+    margin: 0 0 12px;
+    font-size: 19px;
+    font-weight: 700;
+}
+
+.delete-dialog-body p {
+    margin: 0 0 26px;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+}
+
+.delete-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.delete-dialog-actions button {
+    padding: 11px 16px;
+    border: 0;
+    border-radius: 9px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.delete-cancel {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.delete-confirm {
+    background: #dc2626;
+    color: white;
+}
+
+.delete-confirm:hover {
+    background: #b91c1c;
+}
+
+.delete-dialog-actions button:focus-visible,
+.delete-button:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .delete-button {
+        transition: none;
+    }
+}

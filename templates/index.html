@@ -143,6 +143,16 @@
             placeholder="ここにメモを書き始めましょう..."
           >{{ selected_note.content|default('', true) }}</textarea>
 
+          <button
+            id="delete-note-open"
+            class="delete-button"
+            type="button"
+            aria-haspopup="dialog"
+            aria-controls="delete-note-dialog"
+          >
+            メモを削除
+          </button>
+
           <div class="editor-actions">
             <button class="save-button" type="submit">変更を保存</button>
           </div>
@@ -219,10 +229,49 @@
     </form>
   </dialog>
 
+  {% if selected_note %}
+  <dialog
+    id="delete-note-dialog"
+    class="delete-note-dialog"
+    aria-labelledby="delete-note-heading"
+    aria-describedby="delete-note-description"
+  >
+    <div class="delete-dialog-body">
+      <h2 id="delete-note-heading">
+        メモを削除しますか？
+      </h2>
+
+      <p id="delete-note-description">
+        「{{ selected_note.title }}」を削除します。
+        この操作は元に戻せません。
+      </p>
+
+      <form
+        method="POST"
+        action="{{ url_for('delete_note', note_id=selected_note.id) }}"
+        class="delete-dialog-actions"
+      >
+        <button
+          id="delete-note-cancel"
+          type="button"
+          class="delete-cancel"
+        >
+          キャンセル
+        </button>
+
+        <button type="submit" class="delete-confirm">
+          削除する
+        </button>
+      </form>
+    </div>
+  </dialog>
+  {% endif %}
+
   <!-- 日本時間をOS・ブラウザのタイムゾーンに関係なく表示する -->
   <script src="{{ url_for('static', filename='js/date-jst.js') }}"></script>
   <script src="{{ url_for('static', filename='js/autosave.js') }}"></script>
   <script src="{{ url_for('static', filename='js/create-modal.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/delete-modal.js') }}"></script>
   <script>
     document.querySelector("#welcome-create-note")
       ?.addEventListener("click", () => {

@@ -13,7 +13,7 @@ now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 cursor.execute(
     "INSERT INTO notes (title, content, created_at, updated_at) VALUES (?, ?, ?, ?)",
-    ("Everybody Party TONIGHT!!!", "First time Club", now_str, now_str)
+    ("we are Party TONIGHT!!!", "First adadada Club", now_str, now_str)
 )
 
 connection.commit()

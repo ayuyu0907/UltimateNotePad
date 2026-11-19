@@ -8,7 +8,6 @@ DB_PATH = Path(__file__).resolve().parent / "data" / "practice.db"
 connection = None
 
 try:
-
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 
@@ -25,22 +24,24 @@ try:
     elif choice == "2":
         order = "updated_at ASC"
     elif choice == "3":
-        order = "title DESC"
+        order = "title ASC"
     else:
-        print("無効な選択です")
+        raise ValueError("無効な選択です")
 
     sql = f"SELECT id, title, updated_at FROM notes ORDER BY {order} LIMIT 5"
 
-    cursor.execute(
-    sql,
-)
+    cursor.execute(sql)
 
     rows = cursor.fetchall()
+    print("検索結果（最大5件）")
     if rows:
-        for note_id, title in rows:
-            print(f"ID: {note_id} | {title}")
+        for note_id, title, updated_at in rows:
+            print(f"ID: {note_id} | {title} | {updated_at}")
     else:
         print("該当するメモはありません")
+
+except ValueError as error:
+    print(f"入力エラー: {error}")
 
 except sqlite3.Error as error:
     print(f"データベースエラー: {error}")
@@ -48,4 +49,3 @@ except sqlite3.Error as error:
 finally:
     if connection is not None:
         connection.close()
-    pass

@@ -6,25 +6,44 @@ import sqlite3
 
 app = Flask(__name__) 
 
+
 @app.route("/")
 def index():
 
-    notes = load_notes()
-    
+    # ① URLから検索条件を取得
+    keyword = request.args.get("q", "")
+    sort = request.args.get("sort", "new")
+
+    # ② 検索・並べ替えを実行
+    notes = load_notes(
+        keyword=keyword,
+        sort=sort
+    )
+
+    # ③ URLからメモIDを取得
+    note_id = request.args.get(
+        "id",
+        default=None,
+        type=int
+    )
+
     selected_note = None
 
-    note_id = request.args.get("id", default=1, type=int)
+    if notes:
 
-    for note in notes:
-        if note["id"] == note_id:
-            selected_note = note
-            break
-    
+        if note_id is not None:
+            for note in notes:
+                if note["id"] == note_id:
+                    selected_note = note
+                    break
+        if selected_note is None:
+            selected_note = notes[0]
+        
     return render_template(
-        'index.html',
+        "index.html",
         notes=notes,
         selected_note=selected_note
-        )
+    )
 
 @app.route("/notes/create", methods=["POST"])
 def create_note():
@@ -133,27 +152,50 @@ def delete_note(note_id):
     finally:
         if connection is not None:
             connection.close()
-        pass
+
+def load_notes(keyword="", sort="new"):
+
+    connection = None
+
+    sort_options = {
+    "new": "updated_at DESC",
+    "old": "updated_at ASC",
+    "title": "title ASC"
+    }
+    pattern = f"%{keyword}%"
+
+    order = sort_options.get(sort, "updated_at DESC")
 
 
-def load_notes():
-    connection = sqlite3.connect("data/notes.db")
-    connection.row_factory = sqlite3.Row
-    cursor = connection.cursor()
+    try:
+        connection = sqlite3.connect("data/notes.db")
+        connection.row_factory = sqlite3.Row
+        cursor = connection.cursor()
 
-    cursor.execute(
-    "SELECT * FROM notes ORDER BY updated_at DESC;"
-    )
+        sql = f"""
+        SELECT *
+        FROM notes
+        WHERE title LIKE ? OR content LIKE ?
+        ORDER BY {order}
+        """
 
-    rows = cursor.fetchall()
+        cursor.execute(
+            sql,
+            (pattern, pattern,)
+        )
 
-    note_list = []
-    for row in rows:
-        note_list.append(dict(row))
+        rows = cursor.fetchall()
+        notes = [dict(row) for row in rows]
 
-    connection.close()
+        return notes
 
-    return note_list
+    except sqlite3.Error as error:
+        print(f"データベースエラー: {error}")
+        raise
+
+    finally:
+        if connection is not None:
+            connection.close()
 
 if __name__ == '__main__':
     app.run(

@@ -39,13 +39,58 @@
 
       <div class="sidebar-content">
         <div class="search-wrap">
-          <span aria-hidden="true">⌕</span>
-          <input
-            type="search"
-            placeholder="メモを検索（後日実装）"
-            aria-label="メモを検索"
-            disabled
+          <form
+            id="note-search-form"
+            class="note-filter"
+            method="get"
+            action="{{ url_for('index') }}"
+            role="search"
           >
+            <label class="note-filter__label" for="note-search">
+              メモを検索
+            </label>
+
+            <div class="note-filter__search">
+              <input
+                id="note-search"
+                class="note-filter__input"
+                type="search"
+                name="q"
+                placeholder="タイトル・本文を検索..."
+                value="{{ keyword }}"
+                autocomplete="off"
+              >
+
+              <button class="note-filter__button" type="submit">
+                検索
+              </button>
+            </div>
+
+            <label class="note-filter__label" for="note-sort">
+              並べ替え
+            </label>
+
+            <select
+              id="note-sort"
+              class="note-filter__select"
+              name="sort"
+            >
+              <option value="new"
+                {% if sort == "new" %}selected{% endif %}>
+                更新日時が新しい順
+              </option>
+
+              <option value="old"
+                {% if sort == "old" %}selected{% endif %}>
+                更新日時が古い順
+              </option>
+
+              <option value="title"
+                {% if sort == "title" %}selected{% endif %}>
+                タイトル順
+              </option>
+            </select>
+          </form>
         </div>
         <div class="section-heading">
           <span>すべてのメモ</span>
@@ -54,7 +99,7 @@
         <nav class="note-list" aria-label="メモ">
           {% for note in notes|default([]) %}
           <a
-            href="{{ url_for('index', id=note.id) }}"
+            href="{{ url_for('index', id=note.id, q=keyword, sort=sort) }}"
             class="note-card{% if selected_note and selected_note.id == note.id %} active{% endif %}"
             {% if selected_note and selected_note.id == note.id %}aria-current="page"{% endif %}
           >
@@ -272,6 +317,7 @@
   <script src="{{ url_for('static', filename='js/autosave.js') }}"></script>
   <script src="{{ url_for('static', filename='js/create-modal.js') }}"></script>
   <script src="{{ url_for('static', filename='js/delete-modal.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/search-ui.js') }}" defer></script>
   <script>
     document.querySelector("#welcome-create-note")
       ?.addEventListener("click", () => {

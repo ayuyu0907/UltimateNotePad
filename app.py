@@ -42,7 +42,9 @@ def index():
     return render_template(
         "index.html",
         notes=notes,
-        selected_note=selected_note
+        selected_note=selected_note,
+        keyword = keyword,
+        sort = sort
     )
 
 @app.route("/notes/create", methods=["POST"])
@@ -99,7 +101,7 @@ def update_note(note_id):
         if affected_rows == 0:
             cursor.close()
             connection.close()
-            return "4o4 Not Found", 404    
+            return "404 Not Found", 404    
 
         connection.commit()
         cursor.close()

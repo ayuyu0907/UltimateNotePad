@@ -1,5 +1,9 @@
 .venv/
+.refactor-backups/
+
 __pycache__/
+tests/__pycache__/
+
 *.db
 *.db-journal
 *.db-wal

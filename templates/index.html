@@ -9,9 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/editor-fit.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
   <!-- 遷移先のメイン領域を描画してからView Transitionを開始する -->
   <link rel="expect" href="#main-content" blocking="render">
 </head>
@@ -313,16 +311,8 @@
   {% endif %}
 
   <!-- 日本時間をOS・ブラウザのタイムゾーンに関係なく表示する -->
-  <script src="{{ url_for('static', filename='js/date-jst.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/autosave.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/create-modal.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/delete-modal.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/search-ui.js') }}" defer></script>
-  <script>
-    document.querySelector("#welcome-create-note")
-      ?.addEventListener("click", () => {
-        document.querySelector("#create-note-open")?.click();
-      });
-  </script>
+  <!-- UI (search, dialogs, dates) + independent autosave module -->
+  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/autosave.js') }}" defer></script>
 </body>
 </html>

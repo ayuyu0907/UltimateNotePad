@@ -198,6 +198,7 @@ def load_notes(keyword="", sort="new"):
     finally:
         if connection is not None:
             connection.close()
+            
 
 if __name__ == '__main__':
     app.run(

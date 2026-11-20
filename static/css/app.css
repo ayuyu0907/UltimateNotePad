@@ -1,3 +1,6 @@
+/* UltimateNotePad / consolidated stylesheet. Original cascade preserved. */
+
+/* ===== Original: style.css ===== */
 :root { color-scheme: light; --ink:#1e293b; --muted:#7b8798; --line:#e9edf2; --canvas:#f7f8fb; --accent:#354dd7; }
 * { box-sizing:border-box; }
 body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI","Noto Sans JP",sans-serif; background:var(--canvas); color:var(--ink); -webkit-font-smoothing:antialiased; }
@@ -665,4 +668,616 @@ button:disabled,input:disabled { cursor:not-allowed; }
   .note-filter__button {
     transition: none;
   }
+}
+
+/* ===== Original: animations.css ===== */
+/*
+ * UltimateNotePad / UI Motion
+ * 既存の style.css の後に読み込む追加スタイルです。
+ * GoogleChrome/modern-web-guidance: opacity/transform, View Transitions,
+ * <dialog>のtop layer, prefers-reduced-motion を尊重します。
+ */
+
+:root {
+  --unp-motion-ease: cubic-bezier(.22, 1, .36, 1);
+  --unp-motion-fast: 140ms;
+  --unp-motion-normal: 220ms;
+}
+
+body,
+button,
+input,
+textarea {
+  font-family: Inter, "Noto Sans JP", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+}
+
+/* 既存の div ベースだったメモカードを a としても自然に表示する */
+.note-card {
+  color: inherit;
+  text-decoration: none;
+  outline-offset: 2px;
+  transition:
+    background-color var(--unp-motion-fast) ease,
+    border-color var(--unp-motion-fast) ease,
+    box-shadow var(--unp-motion-fast) ease;
+}
+
+.note-card:focus-visible,
+.icon-button:focus-visible,
+.save-button:focus-visible,
+.dialog-close:focus-visible,
+.dialog-actions button:focus-visible {
+  outline: 2px solid #354dd7;
+  outline-offset: 3px;
+}
+
+.icon-button,
+.save-button,
+.dialog-close,
+.dialog-actions button {
+  cursor: pointer;
+  transition:
+    color var(--unp-motion-fast) ease,
+    background-color var(--unp-motion-fast) ease,
+    border-color var(--unp-motion-fast) ease,
+    box-shadow var(--unp-motion-fast) ease;
+}
+
+.icon-button:disabled,
+.save-button:disabled,
+.dialog-close:disabled,
+.dialog-actions button:disabled {
+  cursor: not-allowed;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .note-card:hover:not(.active) {
+    background-color: #f5f7fc;
+    border-color: #edf0f8;
+  }
+
+  .icon-button:hover:not(:disabled) {
+    background: #eef1ff;
+    border-color: #cbd3fb;
+    color: #354dd7;
+  }
+
+  .save-button:hover:not(:disabled),
+  .dialog-submit:hover:not(:disabled) {
+    background-color: #33415f;
+    box-shadow: 0 6px 16px rgb(26 38 70 / 13%);
+  }
+
+  .dialog-cancel:hover:not(:disabled),
+  .dialog-close:hover:not(:disabled) {
+    background-color: #edf1f6;
+    color: #172033;
+  }
+}
+
+.save-status {
+  transition: color var(--unp-motion-fast) ease,
+    background-color var(--unp-motion-fast) ease;
+}
+
+/* 保存中は小さなインジケータを表示する */
+.save-status[data-state="saving"]::before {
+  box-sizing: border-box;
+  background: transparent;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+}
+
+/* <dialog> を標準 top layer で保持したまま開閉する */
+.create-note-dialog {
+  opacity: 0;
+  transition-property: opacity, transform, display, overlay;
+  transition-duration: 190ms;
+  transition-timing-function: var(--unp-motion-ease);
+  transition-behavior: allow-discrete;
+}
+
+.create-note-dialog[open]:not([data-closing]) {
+  opacity: 1;
+}
+
+@starting-style {
+  .create-note-dialog[open]:not([data-closing]) {
+    opacity: 0;
+  }
+}
+
+.create-note-dialog::backdrop {
+  background-color: rgb(11 19 38 / 0%);
+  transition-property: background-color, display, overlay;
+  transition-duration: 190ms;
+  transition-timing-function: ease;
+  transition-behavior: allow-discrete;
+}
+
+.create-note-dialog[open]:not([data-closing])::backdrop {
+  background-color: rgb(11 19 38 / 54%);
+}
+
+@starting-style {
+  .create-note-dialog[open]:not([data-closing])::backdrop {
+    background-color: rgb(11 19 38 / 0%);
+  }
+}
+
+/* ノートの切り替えは通常のリンク遷移のまま滑らかにする */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+
+  .sidebar {
+    view-transition-name: unp-sidebar;
+  }
+
+  .editor-panel {
+    view-transition-name: unp-editor;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 160ms;
+    animation-timing-function: ease-out;
+  }
+
+  ::view-transition-old(unp-editor) {
+    animation: 120ms ease-in both unp-fade-out;
+  }
+
+  ::view-transition-new(unp-editor) {
+    animation: 240ms var(--unp-motion-ease) both unp-editor-in;
+  }
+
+  .note-card {
+    transition:
+      background-color var(--unp-motion-fast) ease,
+      border-color var(--unp-motion-fast) ease,
+      box-shadow var(--unp-motion-fast) ease,
+      transform var(--unp-motion-normal) var(--unp-motion-ease);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .note-card:hover:not(.active) {
+      transform: translateX(3px);
+    }
+
+    .icon-button:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    .save-button:hover:not(:disabled),
+    .dialog-submit:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+  }
+
+  .icon-button,
+  .save-button,
+  .dialog-actions button {
+    transition:
+      transform var(--unp-motion-fast) ease,
+      color var(--unp-motion-fast) ease,
+      background-color var(--unp-motion-fast) ease,
+      border-color var(--unp-motion-fast) ease,
+      box-shadow var(--unp-motion-fast) ease;
+  }
+
+  .icon-button:active:not(:disabled),
+  .save-button:active:not(:disabled),
+  .dialog-actions button:active:not(:disabled) {
+    transform: scale(.97);
+  }
+
+  .create-note-dialog {
+    transform: translateY(10px) scale(.98);
+  }
+
+  .create-note-dialog[open]:not([data-closing]) {
+    transform: translateY(0) scale(1);
+  }
+
+  @starting-style {
+    .create-note-dialog[open]:not([data-closing]) {
+      transform: translateY(10px) scale(.98);
+    }
+  }
+
+  .save-status[data-state="saving"]::before {
+    animation: unp-spin 700ms linear infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* 色の状態変化は維持し、移動・拡大縮小は無効 */
+  .create-note-dialog,
+  .create-note-dialog::backdrop {
+    transition-duration: 80ms;
+  }
+}
+
+@keyframes unp-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes unp-fade-out {
+  to { opacity: 0; }
+}
+
+@keyframes unp-editor-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* UltimateNotePad: 保存ボタンが編集パネル下端に隠れる問題の修正 */
+/* 最終配置: style.css と animations.css の後に読み込むか、animations.css の末尾に追記 */
+
+/* 高さ固定を解除して、メモが長い場合はページ全体がスクロールできるようにする */
+.workspace {
+  max-height: none;
+  min-height: 100vh;
+}
+
+/* 編集領域の内容を下端で切り落とさない */
+.editor-panel {
+  overflow: visible;
+  min-height: 400px;
+}
+
+/* ボタンを本文の下に独立して配置し、上下の余白を確保 */
+.note-edit-form .editor-actions {
+  position: static;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 28px;
+  padding: 16px 0 24px;
+  min-height: 72px;
+  overflow: visible;
+}
+
+.note-edit-form .save-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: auto;
+  min-height: 44px;
+  padding: 11px 20px;
+  border: 0;
+  border-radius: 10px;
+  background: #172033;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.workspace-footer {
+  flex-shrink: 0;
+}
+
+@media (max-width: 780px) {
+  .workspace { min-height: 0; }
+  .editor-panel { min-height: 350px; }
+  .note-edit-form .editor-actions { justify-content: stretch; }
+  .note-edit-form .save-button { width: 100%; }
+}
+
+/* ===== Original: editor-fit.css ===== */
+/*
+ * UltimateNotePad v1.3 — Editor-only compact layout
+ * Order: style.css -> animations.css -> editor-fit.css
+ * 左のメニューの見た目（幅・文字・余白・検索・カード）は一切変更しません。
+ * 右の編集画面の余白・本文欄を縮めて画面に収めるためのCSSです。
+ */
+
+/* 画面上は非表示、スクリーンリーダーにはラベルを残す */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 画面全体のスクロールを止める。高さはビューポートに合わせる */
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 左側：外観はそのまま。多数のメモがあるとき「一覧だけ」スクロール */
+.sidebar {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.sidebar-header, .sidebar-footer {
+  flex-shrink: 0;
+}
+
+.sidebar-content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.search-wrap, .section-heading {
+  flex-shrink: 0;
+}
+
+.note-list {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.note-list .note-card {
+  flex-shrink: 0; /* 元のカードの大きさは保持 */
+}
+
+/* 右側：上部・下部を残し、編集エリアのみ伸縮 */
+.workspace {
+  min-height: 0;
+  height: 100%;
+  max-height: none; /* 前回追加されたページ全体スクロール設定を打ち消す */
+  overflow: hidden;
+}
+
+.topbar, .workspace-footer {
+  flex-shrink: 0;
+}
+
+.editor-panel {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding-top: clamp(16px, 2.5vh, 26px);
+  padding-bottom: clamp(14px, 2.4vh, 25px);
+}
+
+.editor-panel .editor-metadata {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 17px;
+  margin-bottom: clamp(10px, 1.7vh, 17px);
+}
+
+.note-edit-form {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.editor-panel .note-edit-form .note-title-input {
+  flex: 0 0 auto;
+  min-height: 0;
+  margin-top: 0;
+  margin-bottom: clamp(12px, 2vh, 20px);
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+  color: #172033;
+  font-weight: 700;
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: 8px;
+  font-size: clamp(24px, 2.6vw, 32px);
+  line-height: 1.32;
+}
+
+.editor-panel .note-edit-form .editor-toolbar {
+  flex: 0 0 auto;
+  margin-top: 0;
+  margin-bottom: clamp(10px, 1.8vh, 16px);
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+
+/* 入力欄を残りの高さへ収める。長文は内部スクロールで編集可能 */
+.editor-panel .note-edit-form .note-content-input {
+  display: block;
+  box-sizing: border-box;
+  flex: 1 1 0;
+  width: 100%;
+  height: 0;
+  min-height: 0;
+  max-height: none;
+  margin: 0;
+  padding: 5px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+  color: #42526a;
+  font-family: inherit;
+  font-size: 14px;
+  resize: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  line-height: 1.65;
+}
+
+.editor-panel .note-edit-form .note-content-input::-webkit-scrollbar {
+  display: none;
+}
+
+/* 保存ボタンが下に埋もれず、フォーム内に収まる */
+.editor-panel .note-edit-form .editor-actions {
+  position: static;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 0;
+  margin: 0;
+  padding: 10px 0 0;
+  overflow: visible;
+}
+
+.editor-panel .note-edit-form .save-button {
+  width: auto;
+  min-height: 40px;
+  padding: 9px 18px;
+}
+
+.editor-panel .welcome-editor {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+/* 縦が低い画面では、メニューではなく編集側の余白だけ縮める */
+@media (max-height: 680px) {
+  .editor-panel {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .editor-panel .editor-metadata { margin-bottom: 7px; }
+  .editor-panel .note-edit-form .note-title-input { margin-bottom: 8px; padding-bottom: 5px; font-size: 24px; }
+  .editor-panel .note-edit-form .editor-toolbar { margin-bottom: 8px; padding-top: 3px; padding-bottom: 3px; }
+  .editor-panel .note-edit-form .editor-actions { padding-top: 7px; }
+  .editor-panel .note-edit-form .save-button { min-height: 36px; padding: 7px 15px; }
+  .workspace-footer { padding-top: 10px; padding-bottom: 10px; }
+}
+
+/* スマートフォン: メニューを改造せず、上部にそのまま置く */
+@media (max-width: 780px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: clamp(230px, 32dvh, 280px) minmax(0, 1fr);
+  }
+  .sidebar {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .sidebar-content {
+    min-height: 0;
+    overflow: hidden;
+  }
+  .note-list {
+    min-height: 0;
+    max-height: none;
+  }
+  .workspace {
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+  }
+  .editor-panel {
+    min-height: 0;
+    padding: 14px 20px;
+  }
+  .editor-panel .note-edit-form .note-title-input { font-size: 25px; }
+  .editor-panel .note-edit-form .editor-actions { justify-content: flex-end; }
+  .editor-panel .note-edit-form .save-button { width: auto; }
+}
+
+
+/* 新規作成ボタン：立体デザイン */
+#create-note-open {
+    display: grid;
+    place-items: center;
+
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    padding: 0;
+    flex-shrink: 0;
+    box-sizing: border-box;
+
+    background: #ffffff;
+    color: #273457;
+    border: 1px solid #dce2eb;
+    border-radius: 11px;
+
+    font-family: Arial, sans-serif;
+    font-size: 23px;
+    font-weight: 500;
+    line-height: 1;
+
+    cursor: pointer;
+    user-select: none;
+
+    /* ボタンを浮かせる */
+    box-shadow:
+        0 4px 0 #c3cad6,
+        0 7px 14px rgba(22, 32, 52, 0.10);
+
+    transform: translateY(0);
+
+    transition:
+        transform 150ms ease,
+        box-shadow 150ms ease,
+        background-color 150ms ease,
+        border-color 150ms ease;
+}
+
+/* マウスを乗せる */
+@media (hover: hover) and (pointer: fine) {
+    #create-note-open:hover {
+        background: #f5f7ff;
+        border-color: #b9c5e5;
+
+        transform: translateY(-1px);
+
+        box-shadow:
+            0 5px 0 #b1bdd4,
+            0 9px 18px rgba(22, 32, 52, 0.13);
+    }
+}
+
+/* クリック中：物理的に沈み込む */
+#create-note-open:active {
+    background: #e9edf7;
+
+    transform: translateY(4px);
+
+    box-shadow:
+        0 0 0 #c3cad6,
+        inset 0 2px 4px rgba(22, 32, 52, 0.10);
+}
+
+/* アニメーションを抑えたいユーザーへの配慮 */
+@media (prefers-reduced-motion: reduce) {
+    #create-note-open {
+        transition: none;
+    }
 }

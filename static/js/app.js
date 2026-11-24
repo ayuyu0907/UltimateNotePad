@@ -239,6 +239,9 @@
       'accessibility.bold':'太字（後日実装）','accessibility.italic':'斜体（後日実装）',
       'accessibility.underline':'下線（後日実装）','accessibility.heading':'見出し（後日実装）',
       'accessibility.list':'箇条書き（後日実装）',
+      'pin.label':'ピン留め', 'pin.on':'ピン留めする', 'pin.off':'ピン留めを解除',
+      'pin.saving':'ピン留めを更新中…', 'pin.pinned':'ピン留めしました', 'pin.unpinned':'ピン留めを解除しました',
+      'pin.error':'状態を確認できません。メモを保存してからページを再読み込みしてください。',
     },
     en: {
       'settings.open':'Open settings', 'settings.title':'Settings',
@@ -301,6 +304,9 @@
       'accessibility.bold':'Bold (planned)','accessibility.italic':'Italic (planned)',
       'accessibility.underline':'Underline (planned)','accessibility.heading':'Heading (planned)',
       'accessibility.list':'Bulleted list (planned)',
+      'pin.label':'Pin note', 'pin.on':'Pin note', 'pin.off':'Unpin note',
+      'pin.saving':'Updating pin…', 'pin.pinned':'Note pinned', 'pin.unpinned':'Note unpinned',
+      'pin.error':'Could not confirm pin state. Save your note, then reload the page.',
     }
   };
 
@@ -580,3 +586,130 @@
   else init();
 })();
 /* UNP_SETTINGS_MODULE_END */
+
+/* UNP_PIN_UI_V1 — server-authoritative pin controls; no editor reload */
+/* UNP_PIN_MOTION_V2 */
+(() => {
+  'use strict';
+  function initPins() {
+    const list = document.querySelector('.note-list');
+    const status = document.querySelector('#unp-pin-status');
+    if (!list || !status) return;
+    let busy = false;
+    let uncertain = false;
+    let statusKey = '';
+    const motion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    const rowAnimations = new WeakMap();
+    const t = key => window.UNPSettings.translate(key);
+    const buttons = () => [...list.querySelectorAll('.unp-pin-button')];
+    function translatePins() {
+      for (const button of buttons()) {
+        button.setAttribute('aria-label', t('pin.label'));
+        button.title = t(button.getAttribute('aria-pressed') === 'true' ? 'pin.off' : 'pin.on');
+      }
+      status.textContent = statusKey ? t(statusKey) : '';
+    }
+    function show(key, error = false) {
+      statusKey = key;
+      status.dataset.error = String(error);
+      translatePins();
+    }
+    function rowsOf(scope) {
+      return [...scope.querySelectorAll('.unp-note-row[data-unp-note-id]')];
+    }
+    // Existing rows are moved, not replaced by foreign markup. This preserves
+    // dates, links, current selection, and the live editor/autosave instance.
+    function reconcile(snapshot, id) {
+      const local = rowsOf(list);
+      const remote = rowsOf(snapshot);
+      const lookup = new Map(local.map(row => [row.dataset.unpNoteId, row]));
+      if (remote.length !== local.length || new Set(remote.map(r => r.dataset.unpNoteId)).size !== local.length ||
+          remote.some(row => !lookup.has(row.dataset.unpNoteId) || !['0','1'].includes(row.dataset.pinned))) {
+        throw new Error('List membership changed; reload required');
+      }
+      const changed = remote.find(row => row.dataset.unpNoteId === id);
+      if (!changed) throw new Error('Pin target absent from result');
+      const focus = document.activeElement;
+      const before = new Map(local.map(row => [row, row.getBoundingClientRect().top]));
+      for (const row of local) rowAnimations.get(row)?.cancel();
+      const target = lookup.get(id);
+      const wasPinned = target.dataset.pinned === '1';
+      const pinned = changed.dataset.pinned === '1';
+      // Reorder only the existing list nodes; never replace editor content.
+      let position = list.firstElementChild;
+      for (const next of remote) {
+        const row = lookup.get(next.dataset.unpNoteId);
+        row.dataset.pinned = next.dataset.pinned;
+        row.querySelector('.unp-pin-button').setAttribute('aria-pressed', String(next.dataset.pinned === '1'));
+        if (row !== position) list.insertBefore(row, position);
+        position = row.nextElementSibling;
+      }
+      if (focus && list.contains(focus) && document.activeElement !== focus) focus.focus({preventScroll:true});
+      // FLIP: animate the difference between old and new positions. Server
+      // order and aria-pressed remain authoritative even with motion disabled.
+      if (!motion?.matches) {
+        for (const row of local) {
+          const dy = before.get(row) - row.getBoundingClientRect().top;
+          if (Math.abs(dy) > 1 && typeof row.animate === 'function') {
+            rowAnimations.set(row, row.animate([
+              {transform:`translateY(${dy}px)`}, {transform:'translateY(0)'}
+            ], {duration:230, easing:'cubic-bezier(.2,.75,.25,1)'}));
+          }
+        }
+        const icon = target.querySelector('.unp-pin-button svg');
+        if (wasPinned !== pinned && typeof icon?.animate === 'function') {
+          icon.animate([{scale:'0.82'}, {scale:'1.18',offset:.48}, {scale:'1'}],
+            {duration:230, easing:'ease-out'});
+        }
+      }
+    }
+    list.addEventListener('submit', async event => {
+      const form = event.target;
+      if (!form.matches('.unp-pin-form')) return;
+      event.preventDefault();
+      if (busy || uncertain) return;
+      const id = form.closest('.unp-note-row').dataset.unpNoteId;
+      busy = true;
+      // aria-disabled keeps the clicked button focusable while all submissions
+      // are blocked by the busy guard (including keyboard activation).
+      for (const b of buttons()) b.setAttribute('aria-disabled','true');
+      list.setAttribute('aria-busy','true');
+      const targetButton = form.querySelector('.unp-pin-button');
+      targetButton.dataset.pending = 'true';
+      show('');
+      try {
+        // The existing Python route performs a toggle, not a set operation.
+        // Do not retry a POST: it could accidentally toggle twice.
+        const response = await fetch(form.action, {method:'POST', body:new FormData(form), credentials:'same-origin', cache:'no-store'});
+        if (!response.ok || !response.redirected) throw new Error(`Unexpected pin response: ${response.status}`);
+        // The route redirects without q/sort. Fetch the current filtered URL
+        // instead to let SQLite perform the authoritative secondary ordering.
+        const current = new URL(location.href);
+        current.hash = '';
+        const refresh = await fetch(current, {credentials:'same-origin', cache:'no-store'});
+        if (!refresh.ok) throw new Error(`List refresh: ${refresh.status}`);
+        const doc = new DOMParser().parseFromString(await refresh.text(), 'text/html');
+        const snapshot = doc.querySelector('.note-list');
+        if (!snapshot) throw new Error('Note list missing');
+        reconcile(snapshot, id);
+        show('');
+      } catch (error) {
+        console.warn('Pin state uncertain:', error);
+        uncertain = true;
+        show('pin.error', true);
+      } finally {
+        delete targetButton.dataset.pending;
+        busy = false;
+        list.removeAttribute('aria-busy');
+        for (const b of buttons()) {
+          if (uncertain) b.setAttribute('aria-disabled','true');
+          else b.removeAttribute('aria-disabled');
+        }
+      }
+    });
+    window.addEventListener('unp:preferenceschange', translatePins);
+    translatePins();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPins, {once:true});
+  else initPins();
+})();

@@ -1444,3 +1444,33 @@ html, body {
   #unp-settings-dialog::backdrop {backdrop-filter:none;}
 }
 /* UNP_SETTINGS_CSS_END */
+
+/* UNP_PIN_UI_V1 — note list pin controls */
+/* UNP_PIN_MOTION_V2 */
+.unp-note-row {position:relative;flex:0 0 auto;min-width:0;}
+.unp-note-row > .note-card {width:100%;min-width:0;}
+.unp-note-row .note-card-title {padding-right:32px;}
+.unp-pin-form {position:absolute;right:9px;top:7px;margin:0;}
+.unp-pin-button {display:grid;place-items:center;width:32px;height:32px;padding:6px;
+  border:1px solid transparent;border-radius:8px;background:transparent;color:var(--unp-dim,#75829a);cursor:pointer;}
+.unp-pin-button svg {width:18px;height:18px;pointer-events:none;}
+.unp-pin-button[aria-pressed="true"] {color:var(--unp-primary,#354dd7);background:var(--unp-panel,#f7f9fc);border-color:var(--unp-border,#e7edf4);}
+.unp-pin-button[aria-pressed="true"] svg {fill:currentColor;}
+.unp-pin-button:hover:not(:disabled) {background:var(--unp-panel,#f7f9fc);color:var(--unp-primary,#354dd7);}
+.unp-pin-button:focus-visible {outline:2px solid var(--unp-primary,#354dd7);outline-offset:2px;}
+.unp-pin-button:disabled {opacity:.55;cursor:wait;}
+.unp-pin-status {flex-shrink:0;margin:4px 3px 6px;font-size:11px;line-height:1.55;color:var(--unp-dim,#75829a);overflow-wrap:anywhere;}
+.unp-pin-status:empty {display:none;}
+.unp-pin-status[data-error="true"] {color:#b91c1c;}
+:root[data-theme="dark"] .unp-pin-status[data-error="true"] {color:#ffb1bc;}
+.unp-pin-button[aria-disabled="true"] {cursor:default;}
+.unp-pin-button {transition:color .16s ease,background-color .16s ease,border-color .16s ease;}
+.unp-pin-button[aria-pressed="false"] svg {transform:rotate(-20deg);}
+.unp-pin-button[aria-pressed="true"] svg {transform:rotate(0deg);}
+.unp-pin-button svg {transition:transform .20s ease,fill .15s ease;}
+.unp-pin-button[data-pending="true"] svg {animation:unp-pin-wait .65s ease-in-out infinite alternate;}
+@keyframes unp-pin-wait {from {opacity:1;} to {opacity:.38;}}
+@media (prefers-reduced-motion:reduce) {
+  .unp-pin-button,.unp-pin-button svg {transition:none;}
+  .unp-pin-button[data-pending="true"] svg {animation:none;opacity:.55;}
+}

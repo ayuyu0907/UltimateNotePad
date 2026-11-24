@@ -15,10 +15,6 @@ button:disabled,input:disabled { cursor:not-allowed; }
 .brand-subtitle { display:block; color:#9aa4b3; font-size:10px; margin-top:4px; }
 .icon-button { width:30px;height:30px;border:1px solid #e7ebf1;background:#fff;border-radius:9px;color:#8a93a2;font-size:20px;line-height:1; }
 .sidebar-content { flex:1; padding:0 14px; }
-.search-wrap { display:flex;align-items:center;gap:10px;background:#f5f7f9;border:1px solid #f0f1f4;border-radius:10px;padding:11px 13px;color:#9aa4b3; }
-.search-wrap span { font-size:19px; line-height:14px; }
-.search-wrap input { width:100%; border:0;outline:0;background:transparent;font-size:12px;color:var(--muted); }
-.search-wrap input::placeholder { color:#a3acb8; }
 .section-heading { display:flex;justify-content:space-between;align-items:center;padding:27px 11px 11px;font-weight:700;font-size:12px; }
 .count { color:#8894a5;background:#f2f4f7;border-radius:8px;padding:3px 8px;font-weight:500; }
 .note-list { display:flex;flex-direction:column;gap:4px; }
@@ -585,89 +581,76 @@ button:disabled,input:disabled { cursor:not-allowed; }
 }
 
 
-/* ===== Note Search & Sort ===== */
-
-.note-filter {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-  min-width: 0;
-  margin-bottom: 16px;
+/* ===== Note Search & Sort: compact toolbar ===== */
+/* UNP_SIDEBAR_REFINEMENT_V1 */
+/* Theme tokens are defined once in the settings section below. */
+:root {--unp-sidebar-muted:#536176;}
+:root[data-theme="dark"] {--unp-sidebar-muted:#a7b6cc;}
+.sidebar-content > .search-wrap.unp-search-compact {
+  display:block; padding:0; margin:0; min-width:0;
+  background:transparent; border:0; border-radius:0;
 }
-
-.note-filter__label {
-  font-size: 12px;
-  font-weight: 600;
-  color: inherit;
+.unp-search-compact .note-filter {width:100%; min-width:0; margin:0;}
+.unp-search-compact .note-filter__search {
+  display:flex; align-items:center; gap:0; min-width:0; min-height:44px;
+  border:1px solid var(--unp-border); border-radius:12px;
+  padding:0 3px 0 11px; background:var(--unp-panel); color:var(--unp-ink);
+  transition:border-color var(--unp-motion-fast,140ms) ease, background-color var(--unp-motion-fast,140ms) ease;
 }
-
-.note-filter__search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
+.unp-search-compact .note-filter__search:focus-within {
+  border-color:var(--unp-primary); outline:2px solid var(--unp-primary); outline-offset:1px;
 }
-
-.note-filter__input,
-.note-filter__select {
-  width: 100%;
-  min-width: 0;
-  min-height: 40px;
-  padding: 0 12px;
-  border: 1px solid #d7dce3;
-  border-radius: 9px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-size: 13px;
-  outline: none;
-  transition: border-color .18s ease, box-shadow .18s ease;
+.unp-search-compact .note-filter__search .note-filter__input {
+  flex:1 1 0; width:0; min-width:0; min-height:42px;
+  margin:0; padding:0 3px; border:0; border-radius:0; outline:0; box-shadow:none;
+  background:transparent; color:var(--unp-ink); font:inherit; font-size:13px;
 }
-
-.note-filter__input {
-  flex: 1;
+.unp-search-compact .note-filter__input::placeholder {color:var(--unp-sidebar-muted); opacity:1;}
+.unp-search-compact .note-filter[data-enhanced] .note-filter__input::-webkit-search-cancel-button {display:none;}
+.unp-search-compact .note-filter__button,
+.unp-search-compact .unp-search-clear {
+  display:grid; place-items:center; flex:0 0 38px; width:38px; height:38px;
+  min-height:0; border:0; border-radius:8px; padding:0;
+  background:transparent; color:var(--unp-sidebar-muted); cursor:pointer;
+  transition:color var(--unp-motion-fast,140ms) ease,background-color var(--unp-motion-fast,140ms) ease,transform var(--unp-motion-fast,140ms) var(--unp-motion-ease,ease-out);
 }
-
-.note-filter__input:focus,
-.note-filter__select:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37,99,235,.10);
+.unp-search-compact .note-filter__button {color:var(--unp-primary);}
+.unp-search-compact .unp-search-clear[hidden] {display:none;}
+.unp-search-compact button svg {width:18px;height:18px;pointer-events:none;}
+.unp-search-compact .unp-search-clear svg {width:15px;height:15px;}
+.unp-search-compact button:focus-visible {outline:2px solid var(--unp-primary);outline-offset:-2px;}
+@media(hover:hover) and (pointer:fine) {
+  .unp-search-compact button:hover {background:var(--unp-surface);color:var(--unp-primary);}
 }
-
-.note-filter__button {
-  flex-shrink: 0;
-  min-height: 40px;
-  padding: 0 15px;
-  border: 0;
-  border-radius: 9px;
-  background: #2563eb;
-  color: white;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background .18s ease;
+.section-heading.unp-list-heading {
+  display:flex;align-items:center;justify-content:flex-start;gap:6px;
+  padding:7px 3px 5px;min-width:0;color:var(--unp-sidebar-muted);
 }
-
-.note-filter__button:hover {
-  background: #1d4ed8;
+.unp-list-title {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:700;}
+.unp-list-heading .count {flex:none;margin-right:auto;line-height:1.3;font-variant-numeric:tabular-nums;font-size:11px;padding:3px 7px;}
+.unp-sort-wrap {position:relative;flex:0 1 auto;min-width:0;max-width:52%;}
+.unp-list-heading .note-filter__select {
+  appearance:none;display:block;width:auto;max-width:100%;min-width:0;min-height:36px;
+  border:1px solid transparent;border-radius:8px;padding:0 22px 0 8px;
+  background:transparent;color:var(--unp-sidebar-muted);cursor:pointer;font:inherit;font-size:12px;font-weight:650;
+  text-overflow:ellipsis;
+  transition:color var(--unp-motion-fast,140ms) ease, background-color var(--unp-motion-fast,140ms) ease, border-color var(--unp-motion-fast,140ms) ease;
 }
-
-.note-filter__button:focus-visible {
-  outline: 3px solid rgba(37,99,235,.35);
-  outline-offset: 2px;
+.unp-list-heading .note-filter__select option {color:var(--unp-ink);background:var(--unp-surface);}
+.unp-list-heading .note-filter__select:focus-visible {outline:2px solid var(--unp-primary);outline-offset:1px;}
+.unp-sort-chevron {position:absolute;right:5px;top:50%;translate:0 -50%;width:16px;height:16px;pointer-events:none;color:var(--unp-sidebar-muted);}
+@media(hover:hover) and (pointer:fine) {
+  .unp-list-heading .note-filter__select:hover {background:var(--unp-panel);color:var(--unp-ink);border-color:var(--unp-border);}
 }
-
-.note-filter__select {
-  cursor: pointer;
+.unp-sort-wrap:focus-within .unp-sort-chevron {color:var(--unp-primary);}
+@media(pointer:coarse) {
+  .unp-search-compact .note-filter__search {min-height:50px;}
+  .unp-search-compact .note-filter__button,.unp-search-compact .unp-search-clear {width:44px;height:44px;flex-basis:44px;}
+  .unp-search-compact .note-filter__search .note-filter__input {min-height:48px;}
+  .unp-list-heading .note-filter__select {min-height:44px;}
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .note-filter__input,
-  .note-filter__select,
-  .note-filter__button {
-    transition: none;
-  }
+@media(prefers-reduced-motion:reduce) {
+  .unp-search-compact .note-filter__search,.unp-search-compact button,.unp-list-heading .note-filter__select {transition:none;}
 }
 
 /* ===== Original: animations.css ===== */
@@ -1376,10 +1359,7 @@ html, body {
 :root[data-theme="dark"] .editor-toolbar,
 :root[data-theme="dark"] .topbar,
 :root[data-theme="dark"] .toolbar-divider {border-color:var(--unp-border);}
-:root[data-theme="dark"] .search-wrap,
 :root[data-theme="dark"] .count,
-:root[data-theme="dark"] .note-filter__input,
-:root[data-theme="dark"] .note-filter__select,
 :root[data-theme="dark"] .dialog-field input,
 :root[data-theme="dark"] .dialog-field textarea,
 :root[data-theme="dark"] .note-title-input,
@@ -1411,7 +1391,6 @@ html, body {
 :root[data-theme="dark"] .editor-toolbar button[disabled] {color:#7587a0;}
 :root[data-theme="dark"] .save-status {border-color:var(--unp-border);}
 :root[data-theme="dark"] .delete-button {background:transparent;color:#ff999c;border-color:#704148;}
-:root[data-theme="dark"] .note-filter__button,
 :root[data-theme="dark"] .dialog-submit,
 :root[data-theme="dark"] .save-button {color:#fff;}
 /* Explicit contrast fixes for higher-specificity legacy editor selectors. */
@@ -1432,8 +1411,6 @@ html, body {
 :root[data-theme="dark"] .save-status[data-state="saving"] {background:#193a58;color:#a7cdfd;}
 :root[data-theme="dark"] .save-status[data-state="dirty"] {background:#473322;color:#ffd2a3;}
 :root[data-theme="dark"] .save-status[data-state="error"] {background:#4d272d;color:#ffb1bc;}
-:root[data-theme="dark"] .note-filter__input:focus,
-:root[data-theme="dark"] .note-filter__select:focus {border-color:#89a8ff;box-shadow:0 0 0 3px #536adc55;}
 
 /* Optional compact mode keeps note list and sidebar untouched. */
 :root[data-density="compact"] .editor-panel {padding-top:22px;padding-bottom:22px;}
@@ -1473,4 +1450,35 @@ html, body {
 @media (prefers-reduced-motion:reduce) {
   .unp-pin-button,.unp-pin-button svg {transition:none;}
   .unp-pin-button[data-pending="true"] svg {animation:none;opacity:.55;}
+}
+
+/* ===== Interaction motion: compact sidebar refinement ===== */
+/* Prefer compositor-friendly transforms/opacity. No global transition:all,
+   no animation of layout geometry, and no permanent will-change. */
+:root { --unp-interaction-ease:cubic-bezier(.2,.75,.25,1); --unp-interaction-press:120ms; }
+/* Keep keyboard outlines inside the clipped scrolling note list. */
+.note-list .note-card:focus-visible {outline:2px solid var(--unp-primary);outline-offset:-3px;}
+@media(prefers-reduced-motion:no-preference) {
+  .unp-search-compact button:active:not(:disabled) {transform:scale(.93);}
+  .unp-search-compact .unp-search-clear:not([hidden]) svg {animation:unp-panel-enter 120ms ease-out both;}
+  .unp-pin-button,.unp-settings-trigger,.unp-settings-close,.delete-button,.delete-dialog-actions button,.unp-settings-actions button,.unp-settings-tabs [role="tab"] {
+    transition:transform var(--unp-interaction-press) var(--unp-interaction-ease),color var(--unp-motion-fast) ease,background-color var(--unp-motion-fast) ease,border-color var(--unp-motion-fast) ease;
+  }
+  .unp-pin-button:active:not([aria-disabled="true"]),.unp-settings-trigger:active,.unp-settings-close:active,.delete-button:active,.delete-dialog-actions button:active,.unp-settings-actions button:active,.unp-settings-tabs [role="tab"]:active {transform:scale(.96);}
+  /* Note hover uses color, rather than shifting the entire clickable area. */
+  .note-card:hover:not(.active) {transform:none;}
+  .note-card:active {transform:scale(.985);}
+  /* Native dialogs remain usable if discrete transitions are unsupported. */
+  #unp-settings-dialog[open],.delete-note-dialog[open] {animation:unp-dialog-enter 200ms var(--unp-interaction-ease) both;}
+  #unp-settings-dialog[open]::backdrop,.delete-note-dialog[open]::backdrop {animation:unp-backdrop-enter 180ms ease-out both;}
+  .unp-settings-content [role="tabpanel"]:not([hidden]) {animation:unp-panel-enter 170ms var(--unp-interaction-ease) both;}
+  .save-status[data-state="saved"]::before {animation:unp-saved-dot 220ms var(--unp-interaction-ease) both;}
+}
+@keyframes unp-dialog-enter {from{opacity:0;transform:translateY(6px) scale(.985);}to{opacity:1;transform:none;}}
+@keyframes unp-backdrop-enter {from{opacity:0;}to{opacity:1;}}
+@keyframes unp-panel-enter {from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+@keyframes unp-saved-dot {0%{transform:scale(.75);opacity:.55;}55%{transform:scale(1.2);}100%{transform:scale(1);opacity:1;}}
+@media(prefers-reduced-motion:reduce) {
+  #unp-settings-dialog,.delete-note-dialog,.unp-settings-content [role="tabpanel"],.save-status[data-state="saved"]::before {animation:none;}
+  .unp-settings-trigger,.unp-settings-close,.unp-pin-button,.delete-button,.delete-dialog-actions button,.unp-settings-actions button,.unp-settings-tabs [role="tab"] {transition:none;}
 }

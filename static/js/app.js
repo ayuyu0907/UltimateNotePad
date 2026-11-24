@@ -96,11 +96,38 @@
     });
   }
 
+  // UNP_SIDEBAR_REFINEMENT_V1: native GET form, no background search requests.
   function initSearch() {
     const form = select("#note-search-form");
     const sort = select("#note-sort");
-    if (!form || !sort) return;
+    const input = select("#note-search");
+    const clear = select("#unp-search-clear");
+    if (!form || !sort || !input || !clear) return;
+    const appliedQuery = input.defaultValue;
+    form.dataset.enhanced = "true";
+    const updateClear = () => { clear.hidden = input.value.length === 0; };
+    updateClear();
+    input.addEventListener("input", updateClear);
     sort.addEventListener("change", () => form.requestSubmit());
+    clear.addEventListener("click", () => {
+      input.value = "";
+      updateClear();
+      input.focus({preventScroll: true});
+      // Clear applied search results, not just the input. If the text was
+      // only a draft, no navigation is required.
+      if (appliedQuery !== "") form.requestSubmit();
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key !== "/" || event.defaultPrevented || event.isComposing ||
+          event.repeat || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
+      if (document.querySelector("dialog[open]")) return;
+      const target = event.target;
+      if (target instanceof Element && (target.closest("input, textarea, select, button, a, [contenteditable]:not([contenteditable='false']), [role='textbox']") || target.isContentEditable)) return;
+      event.preventDefault();
+      input.focus();
+      input.select();
+    });
+    window.addEventListener("pageshow", updateClear);
   }
 
   // Existing DB values are interpreted as UTC, and displayed in Tokyo time.
@@ -213,7 +240,8 @@
       'nav.emptySearchDesc':'検索条件を変更してもう一度お試しください。',
       'nav.searchLabel':'メモを検索', 'nav.searchPlaceholder':'タイトル・本文を検索...',
       'nav.search':'検索', 'nav.sortLabel':'並べ替え',
-      'nav.sortNew':'更新日時が新しい順','nav.sortOld':'更新日時が古い順', 'nav.sortTitle':'タイトル順',
+      'nav.sortNew':'新しい順','nav.sortOld':'古い順', 'nav.sortTitle':'タイトル順',
+      'nav.sortHelp':'更新日時またはタイトルで並べ替え', 'nav.clear':'検索をクリア',
       'nav.selectNote':'メモを選択してください',
       'editor.lastUpdated':'最終更新：',
       'editor.titleLabel':'メモのタイトル','editor.titlePlaceholder':'無題のメモ',
@@ -278,7 +306,8 @@
       'nav.emptySearchDesc':'Try changing your search filters.',
       'nav.searchLabel':'Search notes','nav.searchPlaceholder':'Search titles and content...',
       'nav.search':'Search','nav.sortLabel':'Sort by',
-      'nav.sortNew':'Most recently updated','nav.sortOld':'Least recently updated','nav.sortTitle':'Title (ascending)',
+      'nav.sortNew':'Newest','nav.sortOld':'Oldest','nav.sortTitle':'Title',
+      'nav.sortHelp':'Sort by last update or title', 'nav.clear':'Clear search',
       'nav.selectNote':'Select a note',
       'editor.lastUpdated':'Last updated: ',
       'editor.titleLabel':'Note title','editor.titlePlaceholder':'Untitled note',
@@ -374,7 +403,7 @@
     ['.section-heading > span:first-child','nav.all'],
     ['.search-wrap label[for="note-search"]','nav.searchLabel'],
     ['.note-filter__label[for="note-search"]','nav.searchLabel'],
-    ['.note-filter__button','nav.search'],
+    ['.unp-search-submit-label','nav.search'],
     ['.search-wrap label[for="note-sort"]','nav.sortLabel'],
     ['.note-filter__label[for="note-sort"]','nav.sortLabel'],
     ['#note-sort option[value="new"]','nav.sortNew'],
@@ -399,7 +428,7 @@
     ['.delete-confirm','delete.confirm'],
   ];
   const placeholders = [
-    ['#note-search','nav.searchPlaceholder'],
+    ['#note-search','nav.searchLabel'],
     ['#note-title','editor.titlePlaceholder'],
     ['#note-content','editor.contentPlaceholder'],
     ['#create-title','create.placeholderTitle'],
@@ -423,6 +452,17 @@
       const el = $(selector);
       if (el) el.placeholder = t(key);
     }
+    const searchSubmit = $('.note-filter__button');
+    if (searchSubmit) searchSubmit.title = t('nav.search');
+    const searchInput = $('#note-search');
+    if (searchInput) searchInput.title = t('nav.searchPlaceholder');
+    const searchClear = $('#unp-search-clear');
+    if (searchClear) {
+      searchClear.title = t('nav.clear');
+      searchClear.setAttribute('aria-label', t('nav.clear'));
+    }
+    const searchSort = $('#note-sort');
+    if (searchSort) searchSort.title = t('nav.sortHelp');
     const open = $('#unp-settings-open');
     if (open) { open.setAttribute('aria-label', t('settings.open')); open.title=t('settings.open'); }
     const close = $('#unp-settings-close');

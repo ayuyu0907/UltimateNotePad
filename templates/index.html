@@ -66,63 +66,42 @@
       </header>
 
       <div class="sidebar-content">
-        <div class="search-wrap">
-          <form
-            id="note-search-form"
-            class="note-filter"
-            method="get"
-            action="{{ url_for('index') }}"
-            role="search"
-          >
-            <label class="note-filter__label" for="note-search">
-              メモを検索
-            </label>
-
+        <!-- UNP_SIDEBAR_REFINEMENT_V1: search field and compact list toolbar -->
+        <div class="search-wrap unp-search-compact">
+          <form id="note-search-form" class="note-filter" method="get"
+                action="{{ url_for('index') }}" role="search">
+            {% if selected_note %}
+            <input type="hidden" name="id" value="{{ selected_note.id }}">
+            {% endif %}
+            <label class="note-filter__label visually-hidden" for="note-search">メモを検索</label>
             <div class="note-filter__search">
-              <input
-                id="note-search"
-                class="note-filter__input"
-                type="search"
-                name="q"
-                placeholder="タイトル・本文を検索..."
-                value="{{ keyword }}"
-                autocomplete="off"
-              >
-
-              <button class="note-filter__button" type="submit">
-                検索
+              <input id="note-search" class="note-filter__input" type="search" name="q"
+                     placeholder="メモを検索" value="{{ keyword }}" autocomplete="off"
+                     enterkeyhint="search" aria-keyshortcuts="/">
+              <button class="unp-search-clear" id="unp-search-clear" type="button" hidden
+                      aria-label="検索をクリア" title="検索をクリア">
+                <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
+              </button>
+              <button class="note-filter__button" type="submit" title="検索">
+                <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
+                <span class="visually-hidden unp-search-submit-label">検索</span>
               </button>
             </div>
-
-            <label class="note-filter__label" for="note-sort">
-              並べ替え
-            </label>
-
-            <select
-              id="note-sort"
-              class="note-filter__select"
-              name="sort"
-            >
-              <option value="new"
-                {% if sort == "new" %}selected{% endif %}>
-                更新日時が新しい順
-              </option>
-
-              <option value="old"
-                {% if sort == "old" %}selected{% endif %}>
-                更新日時が古い順
-              </option>
-
-              <option value="title"
-                {% if sort == "title" %}selected{% endif %}>
-                タイトル順
-              </option>
-            </select>
           </form>
         </div>
-        <div class="section-heading">
-          <span>すべてのメモ</span>
+        <div class="section-heading unp-list-heading">
+          <span class="unp-list-title">すべてのメモ</span>
           <span class="count">{{ notes|default([])|length }}</span>
+          <div class="unp-sort-wrap">
+            <label class="note-filter__label visually-hidden" for="note-sort">並べ替え</label>
+            <select id="note-sort" class="note-filter__select" name="sort" form="note-search-form"
+                    title="並べ替え">
+              <option value="new" {% if sort == "new" %}selected{% endif %}>新しい順</option>
+              <option value="old" {% if sort == "old" %}selected{% endif %}>古い順</option>
+              <option value="title" {% if sort == "title" %}selected{% endif %}>タイトル順</option>
+            </select>
+            <svg class="unp-sort-chevron" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m7 10 5 5 5-5"/></svg>
+          </div>
         </div>
         <div id="unp-pin-status" class="unp-pin-status" role="status" aria-live="polite"></div>
         <nav class="note-list" aria-label="メモ">

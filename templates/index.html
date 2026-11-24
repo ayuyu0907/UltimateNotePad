@@ -3,6 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- UNP_SETTINGS_BOOTSTRAP_BEGIN: apply theme before stylesheet render -->
+<script>
+(() => {
+  try {
+    const value = JSON.parse(localStorage.getItem('unp.preferences.v1') || '{}');
+    const theme = ['system','light','dark'].includes(value.theme) ? value.theme : 'system';
+    const dark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    document.documentElement.dataset.density = value.editor?.compact === true ? 'compact' : 'comfortable';
+    document.documentElement.lang = value.language === 'en' ? 'en' : 'ja';
+    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+  } catch {
+    document.documentElement.dataset.theme = 'light';
+  }
+})();
+</script>
+<!-- UNP_SETTINGS_BOOTSTRAP_END -->
   <meta name="theme-color" content="#f7f8fb">
   <title>UltimateNotePad</title>
   <!-- 既存のスタイルは維持。追加のアニメーションは別ファイルで管理します。 -->
@@ -24,7 +41,19 @@
             <span class="brand-subtitle">Your space to think.</span>
           </div>
         </div>
-        <button
+        <div class="unp-header-actions">
+  <button
+    id="unp-settings-open"
+    type="button"
+    class="unp-settings-trigger"
+    title="設定"
+    aria-label="設定を開く"
+    aria-haspopup="dialog"
+    aria-controls="unp-settings-dialog"
+  >
+    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3.5l1.3.2.7 2 1.8.8 2-.9 1.9 1.9-.9 2 .8 1.8 2 .7v2.6l-2 .7-.8 1.8.9 2-1.9 1.9-2-.9-1.8.8-.7 2h-2.6l-.7-2-1.8-.8-2 .9-1.9-1.9.9-2-.8-1.8-2-.7v-2.6l2-.7.8-1.8-.9-2 1.9-1.9 2 .9 1.8-.8.7-2z"/><circle cx="12" cy="12" r="3"/></svg>
+  </button>
+  <button
           id="create-note-open"
           class="icon-button"
           type="button"
@@ -33,6 +62,7 @@
           aria-haspopup="dialog"
           aria-controls="create-note-dialog"
         >＋</button>
+</div>
       </header>
 
       <div class="sidebar-content">
@@ -314,5 +344,76 @@
   <!-- UI (search, dialogs, dates) + independent autosave module -->
   <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/autosave.js') }}" defer></script>
+<!-- UNP_SETTINGS_DIALOG_BEGIN : single shared dialog for future app preferences -->
+<dialog id="unp-settings-dialog" aria-labelledby="unp-settings-title" aria-describedby="unp-settings-subtitle">
+  <header class="unp-settings-header">
+    <div>
+      <h2 id="unp-settings-title" data-unp-i18n="settings.title">設定</h2>
+      <p id="unp-settings-subtitle" data-unp-i18n="settings.subtitle">UltimateNotePadの使い方をカスタマイズ</p>
+    </div>
+    <button type="button" id="unp-settings-close" class="unp-settings-close" aria-label="設定を閉じる">×</button>
+  </header>
+  <div class="unp-settings-layout">
+    <nav class="unp-settings-tabs" role="tablist" aria-label="設定カテゴリ">
+      <button id="unp-tab-appearance" type="button" role="tab" aria-selected="true" tabindex="0" aria-controls="unp-panel-appearance" data-unp-i18n="settings.appearance">外観と言語</button>
+      <button id="unp-tab-editor" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="unp-panel-editor" data-unp-i18n="settings.editor">エディター</button>
+      <button id="unp-tab-data" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="unp-panel-data" data-unp-i18n="settings.data">データと同期</button>
+    </nav>
+    <div class="unp-settings-content">
+      <section id="unp-panel-appearance" role="tabpanel" aria-labelledby="unp-tab-appearance" tabindex="0">
+        <fieldset class="unp-setting-group">
+          <legend data-unp-i18n="theme.heading">テーマ</legend>
+          <p class="unp-setting-help" data-unp-i18n="theme.help">画面の配色を選択します。</p>
+          <div class="unp-theme-options">
+            <label><input type="radio" name="unp-theme" value="system" checked><span data-unp-i18n="theme.system">システム設定</span></label>
+            <label><input type="radio" name="unp-theme" value="light"><span data-unp-i18n="theme.light">ライト</span></label>
+            <label><input type="radio" name="unp-theme" value="dark"><span data-unp-i18n="theme.dark">ダーク</span></label>
+          </div>
+        </fieldset>
+        <div class="unp-setting-group">
+          <h3 id="unp-language-heading" data-unp-i18n="language.heading">表示言語</h3>
+          <p class="unp-setting-help" data-unp-i18n="language.help">画面の固定メッセージに適用されます。メモの内容は翻訳しません。</p>
+          <select class="unp-language-select" id="unp-language" aria-labelledby="unp-language-heading">
+            <option value="ja" data-unp-i18n="language.ja">日本語</option>
+            <option value="en" data-unp-i18n="language.en">English（英語）</option>
+          </select>
+        </div>
+      </section>
+      <section id="unp-panel-editor" role="tabpanel" aria-labelledby="unp-tab-editor" tabindex="0" hidden>
+        <div class="unp-setting-group">
+          <label class="unp-setting-toggle" for="unp-autosave">
+            <span><strong data-unp-i18n="editor.autosave">自動保存</strong><p data-unp-i18n="editor.autosaveHelp">入力停止から約1秒後に保存します。無効の場合は手動保存してください。</p></span>
+            <input id="unp-autosave" type="checkbox" checked>
+          </label>
+        </div>
+        <div class="unp-setting-group">
+          <label class="unp-setting-toggle" for="unp-compact">
+            <span><strong data-unp-i18n="editor.compact">コンパクトな編集画面</strong><p data-unp-i18n="editor.compactHelp">右側の編集領域の余白を小さくします。</p></span>
+            <input id="unp-compact" type="checkbox">
+          </label>
+        </div>
+        <p class="unp-setting-tip" data-unp-i18n="editor.notes">編集設定はこの端末のみに保存されます。</p>
+      </section>
+      <section id="unp-panel-data" role="tabpanel" aria-labelledby="unp-tab-data" tabindex="0" hidden>
+        <div class="unp-setting-group">
+          <h3 data-unp-i18n="data.local">現在はローカル設定</h3>
+          <p class="unp-setting-help" data-unp-i18n="data.localDesc">設定はこのブラウザにのみ保存されます。メモ本体は既存のSQLiteデータベースに保存されます。</p>
+          <div class="unp-settings-actions">
+            <button id="unp-export" type="button" data-unp-i18n="data.export">設定をエクスポート</button>
+            <button id="unp-import" type="button" data-unp-i18n="data.import">設定をインポート</button>
+            <button id="unp-reset" type="button" data-unp-i18n="data.reset">初期設定に戻す</button>
+          </div>
+          <input id="unp-import-file" type="file" accept="application/json,.json" hidden>
+          <p id="unp-settings-feedback" class="unp-settings-feedback" role="status" aria-live="polite"></p>
+        </div>
+        <div class="unp-setting-group">
+          <h3 data-unp-i18n="data.sync">将来のアカウント同期</h3>
+          <p class="unp-settings-notice" data-unp-i18n="data.syncDesc">アカウント・端末間同期は未実装です。ログイン、クラウド同期、メモのバックアップが有効になったわけではありません。</p>
+        </div>
+      </section>
+    </div>
+  </div>
+</dialog>
+<!-- UNP_SETTINGS_DIALOG_END -->
 </body>
 </html>

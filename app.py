@@ -178,7 +178,7 @@ def load_notes(keyword="", sort="new"):
         SELECT *
         FROM notes
         WHERE title LIKE ? OR content LIKE ?
-        ORDER BY {order}
+        ORDER BY is_pinned DESC, {order}
         """
 
         cursor.execute(
@@ -198,8 +198,49 @@ def load_notes(keyword="", sort="new"):
     finally:
         if connection is not None:
             connection.close()
-            
 
+
+@app.route("/notes/<int:note_id>/pin", methods=["POST"])
+def toggle_pin(note_id):
+
+    connection = None
+
+    try:
+        connection = sqlite3.connect("data/notes.db")
+        cursor = connection.cursor()
+
+        sql = """
+        UPDATE notes
+        SET is_pinned = CASE
+            WHEN is_pinned = 1 THEN 0
+            ELSE 1
+        END
+        WHERE id = ?;
+        """
+
+        cursor.execute(sql, (note_id,))
+
+        rows = cursor.rowcount
+
+        if rows == 0:
+            return "メモが見つかりません", 404
+
+        connection.commit()
+
+        return redirect(url_for("index", id=note_id))
+    
+    except sqlite3.Error as error:
+        print(f"データベースエラー: {error}")
+
+        if connection is not None:
+            connection.rollback()
+
+        return "データベースエラーが発生しました", 500
+
+    finally:
+        if connection is not None:
+            connection.close()
+            
 if __name__ == '__main__':
     app.run(
         host='127.0.0.1',

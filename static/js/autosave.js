@@ -34,7 +34,7 @@ function initAutosave() {
 
     function setStatus(state, message) {
         status.dataset.state = state;
-        status.textContent = message;
+        status.textContent = window.UNPSettings?.statusText?.(state, message) ?? message;
     }
 
     function delay(ms) {
@@ -45,6 +45,7 @@ function initAutosave() {
 
     function scheduleSave(wait = SAVE_DELAY) {
         clearTimeout(saveTimer);
+        if (window.UNPSettings?.get?.()?.editor?.autosave === false) return;
 
         saveTimer = setTimeout(() => {
             void saveNote();
@@ -193,6 +194,16 @@ function initAutosave() {
         if (savedVersion < editVersion) {
             setStatus("dirty", "再接続しました");
 
+            scheduleSave(0);
+        }
+    });
+
+    // UNP_SETTINGS_AUTOSAVE_HOOK: user setting and language changes.
+    window.addEventListener("unp:preferenceschange", () => {
+        clearTimeout(saveTimer);
+        setStatus(status.dataset.state || "saved", status.textContent);
+        if (window.UNPSettings?.get?.()?.editor?.autosave !== false &&
+            savedVersion < editVersion) {
             scheduleSave(0);
         }
     });

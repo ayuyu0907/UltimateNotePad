@@ -73,6 +73,7 @@
             {% if selected_note %}
             <input type="hidden" name="id" value="{{ selected_note.id }}">
             {% endif %}
+            <input type="hidden" name="favorite" value="{{ 1 if favorite_only else 0 }}">
             <label class="note-filter__label visually-hidden" for="note-search">メモを検索</label>
             <div class="note-filter__search">
               <input id="note-search" class="note-filter__input" type="search" name="q"
@@ -89,8 +90,19 @@
             </div>
           </form>
         </div>
+        <!-- UNP_FAVORITES_V1 -->
+        <nav class="unp-favorite-filter" aria-label="メモの表示範囲">
+          <a href="{{ url_for('index', q=keyword, sort=sort, id=selected_note.id if selected_note else none, favorite=0) }}" {% if not favorite_only %}aria-current="page"{% endif %}>
+            <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h4"/></svg>
+            <span data-unp-i18n="favorite.all">すべて</span>
+          </a>
+          <a href="{{ url_for('index', q=keyword, sort=sort, id=selected_note.id if selected_note else none, favorite=1) }}" {% if favorite_only %}aria-current="page"{% endif %}>
+            <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.8 5.8 6.4.9-4.6 4.5 1.1 6.4-5.7-3-5.7 3 1.1-6.4-4.6-4.5 6.4-.9z"/></svg>
+            <span data-unp-i18n="favorite.label">お気に入り</span>
+          </a>
+        </nav>
         <div class="section-heading unp-list-heading">
-          <span class="unp-list-title">すべてのメモ</span>
+          <span class="unp-list-title">メモ</span>
           <span class="count">{{ notes|default([])|length }}</span>
           <div class="unp-sort-wrap">
             <label class="note-filter__label visually-hidden" for="note-sort">並べ替え</label>
@@ -104,12 +116,12 @@
           </div>
         </div>
         <div id="unp-pin-status" class="unp-pin-status" role="status" aria-live="polite"></div>
-        <nav class="note-list" aria-label="メモ">
+        <nav class="note-list" aria-label="メモ" data-favorite-only="{{ 1 if favorite_only else 0 }}">
           {% for note in notes|default([]) %}
           <!-- UNP_PIN_UI_V1 -->
-          <div class="unp-note-row" data-unp-note-id="{{ note.id }}" data-pinned="{{ 1 if note.is_pinned == 1 else 0 }}">
+          <div class="unp-note-row" data-unp-note-id="{{ note.id }}" data-pinned="{{ 1 if note.is_pinned == 1 else 0 }}" data-favorite="{{ 1 if note.is_favorite == 1 else 0 }}">
           <a
-            href="{{ url_for('index', id=note.id, q=keyword, sort=sort) }}"
+            href="{{ url_for('index', id=note.id, q=keyword, sort=sort, favorite=1 if favorite_only else 0) }}"
             class="note-card{% if selected_note and selected_note.id == note.id %} active{% endif %}"
             {% if selected_note and selected_note.id == note.id %}aria-current="page"{% endif %}
           >
@@ -120,6 +132,14 @@
               data-utc="{{ note.updated_at|default('') }}"
             >{{ note.updated_at|default('') }}</time>
           </a>
+          <form class="unp-favorite-form" method="post" action="{{ url_for('set_favorite', note_id=note.id) }}">
+            <input type="hidden" name="is_favorite" value="{{ 0 if note.is_favorite == 1 else 1 }}">
+            <button class="unp-favorite-button" type="submit"
+              aria-pressed="{{ 'true' if note.is_favorite == 1 else 'false' }}"
+              aria-label="お気に入り" title="{{ 'お気に入りから解除' if note.is_favorite == 1 else 'お気に入りに登録' }}">
+              <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.8 5.8 6.4.9-4.6 4.5 1.1 6.4-5.7-3-5.7 3 1.1-6.4-4.6-4.5 6.4-.9z"/></svg>
+            </button>
+          </form>
           <form class="unp-pin-form" method="post" action="{{ url_for('toggle_pin', note_id=note.id) }}">
             <button class="unp-pin-button" type="submit"
               aria-pressed="{{ 'true' if note.is_pinned == 1 else 'false' }}"
@@ -131,8 +151,16 @@
           {% else %}
           <div class="empty-list">
             <span class="empty-icon" aria-hidden="true">▤</span>
+            {% if keyword %}
+            <strong>該当するメモはありません</strong>
+            <span>検索条件を変更してもう一度お試しください。</span>
+            {% elif favorite_only %}
+            <strong>お気に入りはありません</strong>
+            <span>すべてのメモから星を選択してください。</span>
+            {% else %}
             <strong>メモはまだありません</strong>
             <span>右上の「＋」から最初のメモを作成しましょう。</span>
+            {% endif %}
           </div>
           {% endfor %}
         </nav>

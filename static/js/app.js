@@ -267,6 +267,10 @@
       'accessibility.bold':'太字（後日実装）','accessibility.italic':'斜体（後日実装）',
       'accessibility.underline':'下線（後日実装）','accessibility.heading':'見出し（後日実装）',
       'accessibility.list':'箇条書き（後日実装）',
+      'favorite.all':'すべて','favorite.label':'お気に入り','favorite.filter':'メモの表示範囲',
+      'favorite.on':'お気に入りに登録','favorite.off':'お気に入りから解除',
+      'favorite.emptyTitle':'お気に入りはありません','favorite.emptyDesc':'すべてのメモから星を選択してください。',
+      'favorite.actionError':'状態を確認できません。メモを保存してからページを再読み込みしてください。',
       'pin.label':'ピン留め', 'pin.on':'ピン留めする', 'pin.off':'ピン留めを解除',
       'pin.saving':'ピン留めを更新中…', 'pin.pinned':'ピン留めしました', 'pin.unpinned':'ピン留めを解除しました',
       'pin.error':'状態を確認できません。メモを保存してからページを再読み込みしてください。',
@@ -333,6 +337,10 @@
       'accessibility.bold':'Bold (planned)','accessibility.italic':'Italic (planned)',
       'accessibility.underline':'Underline (planned)','accessibility.heading':'Heading (planned)',
       'accessibility.list':'Bulleted list (planned)',
+      'favorite.all':'All','favorite.label':'Favorites','favorite.filter':'Note collection',
+      'favorite.on':'Add to favorites','favorite.off':'Remove from favorites',
+      'favorite.emptyTitle':'No favorites yet','favorite.emptyDesc':'Choose a star in All notes.',
+      'favorite.actionError':'Could not confirm note state. Save your note, then reload the page.',
       'pin.label':'Pin note', 'pin.on':'Pin note', 'pin.off':'Unpin note',
       'pin.saving':'Updating pin…', 'pin.pinned':'Note pinned', 'pin.unpinned':'Note unpinned',
       'pin.error':'Could not confirm pin state. Save your note, then reload the page.',
@@ -400,7 +408,7 @@
   const $ = (query, parent = document) => parent.querySelector(query);
   const $$ = (query, parent = document) => [...parent.querySelectorAll(query)];
   const labels = [
-    ['.section-heading > span:first-child','nav.all'],
+    ['.section-heading > span:first-child','nav.notes'],
     ['.search-wrap label[for="note-search"]','nav.searchLabel'],
     ['.note-filter__label[for="note-search"]','nav.searchLabel'],
     ['.unp-search-submit-label','nav.search'],
@@ -627,117 +635,156 @@
 })();
 /* UNP_SETTINGS_MODULE_END */
 
-/* UNP_PIN_UI_V1 — server-authoritative pin controls; no editor reload */
+/* UNP_PIN_UI_V1 — shared, server-authoritative note actions */
 /* UNP_PIN_MOTION_V2 */
+/* UNP_FAVORITES_V1 */
 (() => {
   'use strict';
-  function initPins() {
+  function initNoteActions() {
     const list = document.querySelector('.note-list');
     const status = document.querySelector('#unp-pin-status');
-    if (!list || !status) return;
-    let busy = false;
-    let uncertain = false;
-    let statusKey = '';
+    const count = document.querySelector('.unp-list-heading .count');
+    const filters = document.querySelector('.unp-favorite-filter');
+    if (!list || !status || !count || !filters) return;
+    const favoriteOnly = list.dataset.favoriteOnly === '1';
     const motion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
     const rowAnimations = new WeakMap();
     const t = key => window.UNPSettings.translate(key);
-    const buttons = () => [...list.querySelectorAll('.unp-pin-button')];
-    function translatePins() {
+    const buttons = () => [...list.querySelectorAll('.unp-pin-button, .unp-favorite-button')];
+    const rowsOf = scope => [...scope.querySelectorAll('.unp-note-row[data-unp-note-id]')];
+    let busy = false;
+    let uncertain = false;
+    let statusKey = '';
+
+    function translateActions() {
+      filters.setAttribute('aria-label', t('favorite.filter'));
       for (const button of buttons()) {
-        button.setAttribute('aria-label', t('pin.label'));
-        button.title = t(button.getAttribute('aria-pressed') === 'true' ? 'pin.off' : 'pin.on');
+        const key = button.classList.contains('unp-favorite-button') ? 'favorite' : 'pin';
+        button.setAttribute('aria-label', t(`${key}.label`));
+        button.title = t(`${key}.${button.getAttribute('aria-pressed') === 'true' ? 'off' : 'on'}`);
+      }
+      const empty = list.querySelector('.empty-list');
+      if (empty) {
+        const hasSearch = Boolean(document.querySelector('#note-search')?.defaultValue.trim());
+        const prefix = hasSearch ? 'nav.emptySearch' : favoriteOnly ? 'favorite.empty' : 'nav.empty';
+        empty.querySelector('strong').textContent = t(`${prefix}Title`);
+        empty.querySelector('span:last-child').textContent = t(`${prefix}Desc`);
       }
       status.textContent = statusKey ? t(statusKey) : '';
     }
-    function show(key, error = false) {
+    function show(key = '') {
       statusKey = key;
-      status.dataset.error = String(error);
-      translatePins();
+      status.dataset.error = String(Boolean(key));
+      translateActions();
     }
-    function rowsOf(scope) {
-      return [...scope.querySelectorAll('.unp-note-row[data-unp-note-id]')];
+    function setState(row, data) {
+      row.dataset.pinned = data.dataset.pinned;
+      row.dataset.favorite = data.dataset.favorite;
+      row.querySelector('.unp-pin-button').setAttribute('aria-pressed', String(data.dataset.pinned === '1'));
+      row.querySelector('.unp-favorite-button').setAttribute('aria-pressed', String(data.dataset.favorite === '1'));
+      row.querySelector('.unp-favorite-form input[name="is_favorite"]').value = data.dataset.favorite === '1' ? '0' : '1';
     }
-    // Existing rows are moved, not replaced by foreign markup. This preserves
-    // dates, links, current selection, and the live editor/autosave instance.
-    function reconcile(snapshot, id) {
+    function reconcile(snapshot, {id, kind, expected}) {
       const local = rowsOf(list);
       const remote = rowsOf(snapshot);
       const lookup = new Map(local.map(row => [row.dataset.unpNoteId, row]));
-      if (remote.length !== local.length || new Set(remote.map(r => r.dataset.unpNoteId)).size !== local.length ||
-          remote.some(row => !lookup.has(row.dataset.unpNoteId) || !['0','1'].includes(row.dataset.pinned))) {
-        throw new Error('List membership changed; reload required');
+      const ids = new Set(remote.map(row => row.dataset.unpNoteId));
+      const remove = favoriteOnly && kind === 'favorite' && expected === '0';
+      const target = lookup.get(id);
+      const remoteTarget = remote.find(row => row.dataset.unpNoteId === id);
+      const stateField = kind === 'pin' ? 'pinned' : 'favorite';
+      if (!target || snapshot.dataset.favoriteOnly !== list.dataset.favoriteOnly ||
+          ids.size !== remote.length || remote.length !== local.length - Number(remove) ||
+          remote.some(row => !lookup.has(row.dataset.unpNoteId) ||
+            !['0','1'].includes(row.dataset.pinned) || !['0','1'].includes(row.dataset.favorite)) ||
+          local.some(row => !ids.has(row.dataset.unpNoteId) && !(remove && row === target)) ||
+          (remove ? Boolean(remoteTarget) : !remoteTarget || remoteTarget.dataset[stateField] !== expected)) {
+        throw new Error('List membership or action state changed; reload required');
       }
-      const changed = remote.find(row => row.dataset.unpNoteId === id);
-      if (!changed) throw new Error('Pin target absent from result');
+      const empty = remote.length === 0 ? snapshot.querySelector('.empty-list') : null;
+      if (remote.length === 0 && !empty) throw new Error('Empty state missing');
+      const oldState = target.dataset[stateField];
       const focus = document.activeElement;
+      const focusRemoved = remove && target.contains(focus);
+      const oldIndex = local.indexOf(target);
       const before = new Map(local.map(row => [row, row.getBoundingClientRect().top]));
       for (const row of local) rowAnimations.get(row)?.cancel();
-      const target = lookup.get(id);
-      const wasPinned = target.dataset.pinned === '1';
-      const pinned = changed.dataset.pinned === '1';
-      // Reorder only the existing list nodes; never replace editor content.
+      // Only the intended removal is permitted. Never replace the editor or other rows.
+      if (remove) target.remove();
       let position = list.firstElementChild;
       for (const next of remote) {
         const row = lookup.get(next.dataset.unpNoteId);
-        row.dataset.pinned = next.dataset.pinned;
-        row.querySelector('.unp-pin-button').setAttribute('aria-pressed', String(next.dataset.pinned === '1'));
+        setState(row, next);
         if (row !== position) list.insertBefore(row, position);
         position = row.nextElementSibling;
       }
-      if (focus && list.contains(focus) && document.activeElement !== focus) focus.focus({preventScroll:true});
-      // FLIP: animate the difference between old and new positions. Server
-      // order and aria-pressed remain authoritative even with motion disabled.
+      if (empty) list.append(empty.cloneNode(true));
+      count.textContent = String(remote.length);
+      if (focusRemoved) {
+        const remaining = rowsOf(list);
+        const fallback = remaining[Math.min(oldIndex, remaining.length - 1)]?.querySelector('.unp-favorite-button') || filters.querySelector('[aria-current="page"]');
+        fallback?.focus({preventScroll:true});
+      } else if (focus && list.contains(focus) && document.activeElement !== focus) {
+        focus.focus({preventScroll:true});
+      }
       if (!motion?.matches) {
-        for (const row of local) {
+        for (const row of rowsOf(list)) {
           const dy = before.get(row) - row.getBoundingClientRect().top;
           if (Math.abs(dy) > 1 && typeof row.animate === 'function') {
-            rowAnimations.set(row, row.animate([
-              {transform:`translateY(${dy}px)`}, {transform:'translateY(0)'}
-            ], {duration:230, easing:'cubic-bezier(.2,.75,.25,1)'}));
+            rowAnimations.set(row, row.animate([{transform:`translateY(${dy}px)`},{transform:'translateY(0)'}],
+              {duration:230,easing:'cubic-bezier(.2,.75,.25,1)'}));
           }
         }
-        const icon = target.querySelector('.unp-pin-button svg');
-        if (wasPinned !== pinned && typeof icon?.animate === 'function') {
-          icon.animate([{scale:'0.82'}, {scale:'1.18',offset:.48}, {scale:'1'}],
-            {duration:230, easing:'ease-out'});
+        const icon = target.querySelector(`.unp-${kind}-button svg`);
+        if (!remove && oldState !== expected && typeof icon?.animate === 'function') {
+          icon.animate([{scale:'.82'},{scale:'1.18',offset:.48},{scale:'1'}],{duration:230,easing:'ease-out'});
         }
       }
     }
     list.addEventListener('submit', async event => {
       const form = event.target;
-      if (!form.matches('.unp-pin-form')) return;
+      if (!form.matches('.unp-pin-form, .unp-favorite-form')) return;
       event.preventDefault();
       if (busy || uncertain) return;
-      const id = form.closest('.unp-note-row').dataset.unpNoteId;
+      const row = form.closest('.unp-note-row');
+      const id = row.dataset.unpNoteId;
+      const kind = form.classList.contains('unp-favorite-form') ? 'favorite' : 'pin';
+      const targetButton = form.querySelector(`.unp-${kind}-button`);
+      const body = new FormData(form);
+      const expected = kind === 'pin' ? (row.dataset.pinned === '1' ? '0' : '1') : body.get('is_favorite');
+      if (!['0','1'].includes(expected)) return;
       busy = true;
-      // aria-disabled keeps the clicked button focusable while all submissions
-      // are blocked by the busy guard (including keyboard activation).
       for (const b of buttons()) b.setAttribute('aria-disabled','true');
       list.setAttribute('aria-busy','true');
-      const targetButton = form.querySelector('.unp-pin-button');
       targetButton.dataset.pending = 'true';
-      show('');
+      show();
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 20000);
+      const options = {credentials:'same-origin', cache:'no-store', signal:controller.signal};
       try {
-        // The existing Python route performs a toggle, not a set operation.
-        // Do not retry a POST: it could accidentally toggle twice.
-        const response = await fetch(form.action, {method:'POST', body:new FormData(form), credentials:'same-origin', cache:'no-store'});
-        if (!response.ok || !response.redirected) throw new Error(`Unexpected pin response: ${response.status}`);
-        // The route redirects without q/sort. Fetch the current filtered URL
-        // instead to let SQLite perform the authoritative secondary ordering.
+        // Never retry the pin toggle or automatically repeat an uncertain mutation.
+        const response = await fetch(form.action, {...options, method:'POST', body});
+        if (!response.ok || !response.redirected || new URL(response.url).origin !== location.origin) throw new Error(`Action response: ${response.status}`);
+        // Existing routes redirect to the full list; confirm the persisted action,
+        // including an unstarred note that will be absent from the filtered list.
+        const parser = new DOMParser();
+        const result = parser.parseFromString(await response.text(), 'text/html');
+        const persisted = rowsOf(result).find(r => r.dataset.unpNoteId === id);
+        if (!persisted || persisted.dataset[kind === 'pin' ? 'pinned' : 'favorite'] !== expected) throw new Error('Action not confirmed');
         const current = new URL(location.href);
         current.hash = '';
-        const refresh = await fetch(current, {credentials:'same-origin', cache:'no-store'});
+        const refresh = await fetch(current, options);
         if (!refresh.ok) throw new Error(`List refresh: ${refresh.status}`);
-        const doc = new DOMParser().parseFromString(await refresh.text(), 'text/html');
-        const snapshot = doc.querySelector('.note-list');
+        const snapshot = parser.parseFromString(await refresh.text(), 'text/html').querySelector('.note-list');
         if (!snapshot) throw new Error('Note list missing');
-        reconcile(snapshot, id);
-        show('');
+        reconcile(snapshot, {id,kind,expected});
+        show();
       } catch (error) {
-        console.warn('Pin state uncertain:', error);
+        console.warn('Note action state uncertain:', error);
         uncertain = true;
-        show('pin.error', true);
+        show('favorite.actionError');
       } finally {
+        clearTimeout(timeout);
         delete targetButton.dataset.pending;
         busy = false;
         list.removeAttribute('aria-busy');
@@ -747,9 +794,17 @@
         }
       }
     });
-    window.addEventListener('unp:preferenceschange', translatePins);
-    translatePins();
+    // A single in-flight action for both controls. Prevent accidental navigation
+    // from the sidebar during this short request; normal unload protection remains.
+    document.querySelector('.sidebar-content')?.addEventListener('click', event => {
+      if (busy && event.target instanceof Element && event.target.closest('a')) event.preventDefault();
+    });
+    document.querySelector('#note-search-form')?.addEventListener('submit', event => {
+      if (busy) event.preventDefault();
+    });
+    window.addEventListener('unp:preferenceschange', translateActions);
+    translateActions();
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPins, {once:true});
-  else initPins();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initNoteActions, {once:true});
+  else initNoteActions();
 })();

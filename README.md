@@ -21,6 +21,9 @@ Python・Flask・SQLite を用いて開発しており、シンプルで直感�
 - 更新日時の新しい順・古い順・タイトル順での並べ替え
 - 複数メモのピン留め・解除（固定メモを優先して表示）
 - ピン留め時の一覧のアニメーション更新と編集内容の保持
+- 星アイコンでお気に入りの登録・解除（ピン留めとは独立）
+- お気に入りフィルターと検索・並べ替えの組み合わせ
+- お気に入り解除時も編集中の内容を保持。絞り込み中は対象行だけ一覧から除外
 - SQLite によるメモの永続化
 
 ### 保存
@@ -105,17 +108,19 @@ python -m pip install -r requirements.txt
 mkdir -p data
 python3 database.py
 python3 migrations/001_add_is_pinned.py
+python3 migrations/002_add_is_favorite.py
 ```
 
 `database.py` は既存テーブルを削除せず、存在しない場合に `notes` テーブルを作成します。
-マイグレーションは `is_pinned` 列が存在しない場合に追加します。新規環境でもこのマイグレーションが必要です。
+マイグレーションは `is_pinned` と `is_favorite` 列が存在しない場合に追加します。新規環境でも両方の実行が必要です。
 
 既存の DB に対してマイグレーションを実行する場合は、アプリを停止し、先にバックアップを取得してください。
 
 ```bash
 mkdir -p backups
-cp -n data/notes.db backups/notes-before-pin.db
+cp -p data/notes.db "backups/notes-before-migration-$(date +%Y%m%d-%H%M%S).db"
 python3 migrations/001_add_is_pinned.py
+python3 migrations/002_add_is_favorite.py
 ```
 
 ### 4. アプリケーションの起動
@@ -142,7 +147,8 @@ UltimateNotePad/
 │   └── notes.db
 │
 ├── migrations/                    # DB スキーマの変更
-│   └── 001_add_is_pinned.py
+│   ├── 001_add_is_pinned.py
+│   └── 002_add_is_favorite.py
 │
 ├── templates/
 │   └── index.html                 # Jinja2 テンプレート
@@ -151,13 +157,14 @@ UltimateNotePad/
 │   ├── css/
 │   │   └── app.css                # 統合スタイル・テーマ・モーション
 │   └── js/
-│       ├── app.js                 # UI・検索・設定・ピン留め
+│       ├── app.js                 # UI・検索・設定・ピン留め・お気に入り
 │       └── autosave.js            # 独立した保存処理
 │
 ├── learning/
 │   └── sqlite/                    # SQLite の学習用スクリプト
 ├── tests/                         # テストコード
-│   └── test_routes.py             # Flask の基本ルートテスト
+│   ├── test_routes.py             # Flask の基本ルートテスト
+│   └── test_pin.py                # 一時DBによるピン留め・検索・並べ替えテスト
 └── legacy/
     └── css/                       # 旧スタイル（現行 UI では未使用）
 ```
@@ -178,8 +185,9 @@ SQLite ファイル：`data/notes.db`
 | `created_at` | TEXT NOT NULL | 作成日時 |
 | `updated_at` | TEXT NOT NULL | 更新日時 |
 | `is_pinned` | INTEGER NOT NULL DEFAULT 0 | 0 = 通常、1 = ピン留め |
+| `is_favorite` | INTEGER NOT NULL DEFAULT 0 | 0 = 未登録、1 = お気に入り |
 
-新しいメモは未固定で作成されます。ピン留めの変更だけでは `updated_at` は変更されません。
+新しいメモは未固定・お気に入り未登録で作成されます。ピン留め・お気に入りの変更だけでは `updated_at` は変更されません。
 
 ## Flask ルーティング
 
@@ -190,6 +198,7 @@ SQLite ファイル：`data/notes.db`
 | POST | `/notes/<note_id>/update` | メモの編集・保存 |
 | POST | `/notes/<note_id>/delete` | メモの削除 |
 | POST | `/notes/<note_id>/pin` | ピン留めの切り替え |
+| POST | `/notes/<note_id>/favorite` | `is_favorite=0` または `1` を設定（成功302、不正値400、対象なし404） |
 
 ### 一覧のクエリパラメーター
 
@@ -198,10 +207,13 @@ SQLite ファイル：`data/notes.db`
 | `q` | 検索キーワード |
 | `sort` | `new`（既定） / `old` / `title` |
 | `id` | 選択するメモ ID |
+| `favorite` | `1` のときお気に入りのみ。それ以外は全メモ |
 
-例：`/?q=Python&sort=title`
+例：`/?favorite=1&q=Python&sort=title`
 
-検索結果に一致するメモだけを対象として、ピン留め状態を優先し、その中で指定された並べ替えを行います。
+検索結果とお気に入り条件に一致するメモだけを対象として、ピン留め状態を優先し、その中で指定された並べ替えを行います。
+
+星ボタンは変更後の値をPOSTし、ピンボタンは反転をPOSTします。JSは両方を直列化し、サーバーの応答と現在の一覧を確認して行だけを更新します。成功テキストは出しません。お気に入り一覧で選択中のメモを解除しても、現在のエディターは次の画面遷移まで維持します。検索・ソート・メモ選択・表示フィルターはGET遷移で、未保存時の既存離脱警告が有効です。JSが無効な場合、登録・解除は通常のPOSTとリダイレクトで行われ、全メモ表示に戻ります。新規作成・削除も既存ルートのリダイレクト仕様に従います。
 
 ## テスト
 
@@ -214,7 +226,13 @@ python3 -m tests.test_routes
 現行のルートテストでは、トップページ、検索、並べ替え、検索と並べ替えの組み合わせ、存在しない URL の HTTP ステータスを確認します。
 テストは GET リクエストを使用するため、メモの作成・更新・削除は行いません。
 
-ピン留めの DB 更新・検索結果の内容・並べ替え順を検証する自動テストは今後追加予定です。更新系テストには専用の一時 DB を使用する方針です。
+ピン留めの更新・解除、検索、並べ替え、404/405は以下で検証します。`main()` が一時ディレクトリを作成してテストDBを準備するため、個別関数やpytestによる自動検出で実行しないでください。
+
+```bash
+python3 -m tests.test_pin
+```
+
+お気に入り専用の自動テストは課題10-2Eで追加予定です。
 
 `tests/test_installer.py` と `tests/test_settings_core.js` は旧適用パッケージを前提としたテストです。現行リポジトリには必要なインストーラーや `payload/` が揃っていないため、そのままでは実行できません。
 
@@ -236,8 +254,9 @@ python3 -m tests.test_routes
 - [x] 自動保存・検索・並べ替え
 - [x] テーマ・多言語・共通設定
 - [x] ピン留め
-- [ ] ピン留めの自動テスト（課題 10-1E）
-- [ ] お気に入り
+- [x] ピン留めの自動テスト（課題 10-1E）
+- [x] お気に入り（DB・バックエンド・UI、課題 10-2A〜D）
+- [ ] お気に入りの自動テスト（課題 10-2E）
 - [ ] タグ
 - [ ] フォルダー
 - [ ] アーカイブ・ゴミ箱
@@ -269,6 +288,12 @@ python3 -m tests.test_routes
 - UI の設定はブラウザ単位で保存されます。アカウント同期やメモのバックアップを提供するものではありません。
 - 現在は認証・認可や CSRF 対策が未整備で、Flask のデバッグモードを使用しています。一般公開・複数ユーザー利用向けの本番構成ではありません。
 - 日時は現行コードが DB の日時文字列を UTC として解釈して JST 表示する一方、保存側はサーバーのローカル時刻を使用しています。サーバーのタイムゾーンが UTC 以外の場合は表示にずれが生じる可能性があり、今後統一する必要があります。
+
+## 更新履歴
+
+- 2026-11-26 / 10-2D: お気に入りの表示フィルター・星ボタン・ピンと共通の非同期更新、日英・テーマ・モーション対応。セットアップ、DB、ルート、テスト手順も更新。
+
+<!-- UNP_FAVORITES_V1 -->
 
 ## Project
 

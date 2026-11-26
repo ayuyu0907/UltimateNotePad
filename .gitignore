@@ -1,10 +1,35 @@
+# Python
 .venv/
-.refactor-backups/
-
+venv/
 __pycache__/
-tests/__pycache__/
+*.py[cod]
+.pytest_cache/
 
+# SQLite
 *.db
 *.db-journal
 *.db-wal
 *.db-shm
+*.sqlite
+*.sqlite3
+
+# Backups
+.refactor-backups/
+backups/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Build & archives
+*.zip
+build/
+dist/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

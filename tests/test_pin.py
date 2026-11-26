@@ -1,5 +1,3 @@
-#!/workspaces/UltimateNotePad/.venv/bin/python3
-
 import os
 import sqlite3
 

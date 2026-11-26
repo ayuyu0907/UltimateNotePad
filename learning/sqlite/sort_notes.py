@@ -1,5 +1,3 @@
-#!/workspaces/UltimateNotePad/.venv/bin/python3
-
 from pathlib import Path
 import sqlite3
 

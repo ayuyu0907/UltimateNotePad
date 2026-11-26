@@ -1,5 +1,3 @@
-#!/workspaces/UltimateNotePad/.venv/bin/python3
-
 import sqlite3
 
 connection = sqlite3.connect("data/notes.db")
@@ -11,7 +9,8 @@ cursor.execute("""
         title TEXT NOT NULL,
         content TEXT NOT NULL,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        is_pinned INTEGER NOT NULL DEFAULT 0
     )
 """)
 

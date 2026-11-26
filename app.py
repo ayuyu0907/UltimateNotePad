@@ -13,11 +13,14 @@ def index():
     # ① URLから検索条件を取得
     keyword = request.args.get("q", "")
     sort = request.args.get("sort", "new")
+    favorite = request.args.get("favorite", default=0, type=int)
+    favorite_only = favorite == 1
 
     # ② 検索・並べ替えを実行
     notes = load_notes(
         keyword=keyword,
-        sort=sort
+        sort=sort,
+        favorite_only=favorite_only
     )
 
     # ③ URLからメモIDを取得
@@ -44,7 +47,8 @@ def index():
         notes=notes,
         selected_note=selected_note,
         keyword = keyword,
-        sort = sort
+        sort = sort,
+        favorite_only=favorite_only
     )
 
 @app.route("/notes/create", methods=["POST"])
@@ -155,8 +159,8 @@ def delete_note(note_id):
         if connection is not None:
             connection.close()
 
-def load_notes(keyword="", sort="new"):
-
+def load_notes(keyword="", sort="new", favorite_only=False):
+    
     connection = None
 
     sort_options = {
@@ -174,17 +178,21 @@ def load_notes(keyword="", sort="new"):
         connection.row_factory = sqlite3.Row
         cursor = connection.cursor()
 
-        sql = f"""
+        sql = """
         SELECT *
         FROM notes
-        WHERE title LIKE ? OR content LIKE ?
-        ORDER BY is_pinned DESC, {order}
+        WHERE (title LIKE ? OR content LIKE ?)
         """
 
-        cursor.execute(
-            sql,
-            (pattern, pattern,)
-        )
+        params = (pattern, pattern)
+
+        if favorite_only:
+            sql += " AND is_favorite = ?"
+            params += (1,)
+            
+        sql += f" ORDER BY is_pinned DESC, {order}"
+
+        cursor.execute(sql, params)
 
         rows = cursor.fetchall()
         notes = [dict(row) for row in rows]
@@ -199,6 +207,41 @@ def load_notes(keyword="", sort="new"):
         if connection is not None:
             connection.close()
 
+
+@app.route("/notes/<int:note_id>/favorite", methods=["POST"])
+def set_favorite(note_id):
+
+    is_favorite = request.form.get("is_favorite", type=int)
+
+    if is_favorite not in [0, 1]:
+        return "無効な値です", 400
+
+    connection = None
+
+    try:
+        connection = sqlite3.connect("data/notes.db")
+        cursor = connection.cursor()
+        cursor.execute(
+            "UPDATE notes SET is_favorite = ? WHERE id = ?",
+            (is_favorite, note_id)
+        )
+
+        rows = cursor.rowcount
+        if rows == 0:
+            return "メモが見つかりません", 404        
+
+        connection.commit()
+        return redirect(url_for("index", id=note_id))
+
+    except sqlite3.Error as error:
+        print(f"データベースエラー: {error}")
+        if connection is not None:
+            connection.rollback()
+
+        return "データベースエラーが発生しました", 500
+    finally:
+        if connection is not None:
+            connection.close()
 
 @app.route("/notes/<int:note_id>/pin", methods=["POST"])
 def toggle_pin(note_id):

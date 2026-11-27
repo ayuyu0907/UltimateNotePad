@@ -162,8 +162,8 @@
     return `${parts.year}/${parts.month}/${parts.day} ${parts.hour}:${parts.minute}`;
   }
 
-  function initDates() {
-    for (const element of selectAll("[data-utc]")) {
+  function initDates(scope = document) {
+    for (const element of selectAll("[data-utc]", scope)) {
       const date = parseUTC(element.dataset.utc);
       if (!date) continue;
       const display = formatJST(date);
@@ -174,6 +174,7 @@
     }
   }
 
+  window.UNPFormatDates = initDates;
   function init() {
     initDialogs();
     initSearch();
@@ -271,6 +272,28 @@
       'favorite.on':'お気に入りに登録','favorite.off':'お気に入りから解除',
       'favorite.emptyTitle':'お気に入りはありません','favorite.emptyDesc':'すべてのメモから星を選択してください。',
       'favorite.actionError':'状態を確認できません。メモを保存してからページを再読み込みしてください。',
+      "tag.all":"すべてのタグ",
+      "tag.filter":"タグで絞り込む",
+      "tag.manage":"タグ管理",
+      "tag.assign":"メモのタグ",
+      "tag.name":"タグ名",
+      "tag.color":"色",
+      "tag.create":"タグを作成",
+      "tag.save":"変更を保存",
+      "tag.cancel":"キャンセル",
+      "tag.edit":"編集",
+      "tag.delete":"削除",
+      "tag.deleteConfirm":"「{name}」を削除しますか？メモ本体は削除されません。",
+      "tag.empty":"タグはまだありません",
+      "tag.emptyAssign":"タグ管理からタグを作成してください。",
+      "tag.noNote":"選択中のメモがありません。",
+      "tag.emptyTitle":"該当するメモはありません",
+      "tag.emptyDesc":"タグや検索条件を変更してください。",
+      "tag.error.invalid":"タグ名（1〜40文字）と色を確認してください。",
+      "tag.error.duplicate":"同じ名前のタグが存在します。",
+      "tag.error.not_found":"対象が見つかりません。",
+      "tag.error.database":"データベースエラーが発生しました。",
+      "tag.error.uncertain":"状態を確認できません。メモを保存してから再読み込みしてください。",
       'pin.label':'ピン留め', 'pin.on':'ピン留めする', 'pin.off':'ピン留めを解除',
       'pin.saving':'ピン留めを更新中…', 'pin.pinned':'ピン留めしました', 'pin.unpinned':'ピン留めを解除しました',
       'pin.error':'状態を確認できません。メモを保存してからページを再読み込みしてください。',
@@ -341,6 +364,28 @@
       'favorite.on':'Add to favorites','favorite.off':'Remove from favorites',
       'favorite.emptyTitle':'No favorites yet','favorite.emptyDesc':'Choose a star in All notes.',
       'favorite.actionError':'Could not confirm note state. Save your note, then reload the page.',
+      "tag.all":"All tags",
+      "tag.filter":"Filter by tag",
+      "tag.manage":"Manage tags",
+      "tag.assign":"Note tags",
+      "tag.name":"Tag name",
+      "tag.color":"Color",
+      "tag.create":"Create tag",
+      "tag.save":"Save changes",
+      "tag.cancel":"Cancel",
+      "tag.edit":"Edit",
+      "tag.delete":"Delete",
+      "tag.deleteConfirm":"Delete “{name}”? Notes will not be deleted.",
+      "tag.empty":"No tags yet",
+      "tag.emptyAssign":"Create a tag in Manage tags first.",
+      "tag.noNote":"No note selected.",
+      "tag.emptyTitle":"No matching notes",
+      "tag.emptyDesc":"Try changing your tag or search filters.",
+      "tag.error.invalid":"Check the name (1–40 characters) and color.",
+      "tag.error.duplicate":"A tag with this name already exists.",
+      "tag.error.not_found":"The item was not found.",
+      "tag.error.database":"A database error occurred.",
+      "tag.error.uncertain":"Could not confirm the state. Save your note, then reload.",
       'pin.label':'Pin note', 'pin.on':'Pin note', 'pin.off':'Unpin note',
       'pin.saving':'Updating pin…', 'pin.pinned':'Note pinned', 'pin.unpinned':'Note unpinned',
       'pin.error':'Could not confirm pin state. Save your note, then reload the page.',
@@ -666,7 +711,7 @@
       const empty = list.querySelector('.empty-list');
       if (empty) {
         const hasSearch = Boolean(document.querySelector('#note-search')?.defaultValue.trim());
-        const prefix = hasSearch ? 'nav.emptySearch' : favoriteOnly ? 'favorite.empty' : 'nav.empty';
+        const prefix = hasSearch ? 'nav.emptySearch' : list.dataset.tagId !== '0' ? 'tag.empty' : favoriteOnly ? 'favorite.empty' : 'nav.empty';
         empty.querySelector('strong').textContent = t(`${prefix}Title`);
         empty.querySelector('span:last-child').textContent = t(`${prefix}Desc`);
       }
@@ -693,7 +738,7 @@
       const target = lookup.get(id);
       const remoteTarget = remote.find(row => row.dataset.unpNoteId === id);
       const stateField = kind === 'pin' ? 'pinned' : 'favorite';
-      if (!target || snapshot.dataset.favoriteOnly !== list.dataset.favoriteOnly ||
+      if (!target || snapshot.dataset.favoriteOnly !== list.dataset.favoriteOnly || snapshot.dataset.tagId !== list.dataset.tagId ||
           ids.size !== remote.length || remote.length !== local.length - Number(remove) ||
           remote.some(row => !lookup.has(row.dataset.unpNoteId) ||
             !['0','1'].includes(row.dataset.pinned) || !['0','1'].includes(row.dataset.favorite)) ||
@@ -745,7 +790,8 @@
       const form = event.target;
       if (!form.matches('.unp-pin-form, .unp-favorite-form')) return;
       event.preventDefault();
-      if (busy || uncertain) return;
+      if (list.dataset.tagUncertain === 'true') {show('favorite.actionError');return;}
+      if (busy || uncertain || list.dataset.tagBusy === 'true') return;
       const row = form.closest('.unp-note-row');
       const id = row.dataset.unpNoteId;
       const kind = form.classList.contains('unp-favorite-form') ? 'favorite' : 'pin';
@@ -782,6 +828,7 @@
       } catch (error) {
         console.warn('Note action state uncertain:', error);
         uncertain = true;
+        list.dataset.actionUncertain = 'true';
         show('favorite.actionError');
       } finally {
         clearTimeout(timeout);
@@ -803,8 +850,277 @@
       if (busy) event.preventDefault();
     });
     window.addEventListener('unp:preferenceschange', translateActions);
+    window.addEventListener('unp:tags-list-updated', translateActions);
     translateActions();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initNoteActions, {once:true});
   else initNoteActions();
+})();
+
+/* UNP_TAGS_V1 — tag dialog; no editor replacement, no automatic mutation retries */
+(() => {
+  'use strict';
+  function initTags() {
+    const $ = (selector, scope = document) => scope.querySelector(selector);
+    const dialog = $('#unp-tag-dialog');
+    const list = $('.note-list');
+    const filter = $('#unp-tag-filter');
+    const form = $('#unp-tag-form');
+    const name = $('#unp-tag-name');
+    const color = $('#unp-tag-color');
+    const submit = $('#unp-tag-submit');
+    const cancel = $('#unp-tag-cancel');
+    const status = $('#unp-tag-status');
+    const tabs = {assign:$('#unp-tag-tab-assign'), manage:$('#unp-tag-tab-manage')};
+    const panels = {assign:$('#unp-tag-assign-panel'), manage:$('#unp-tag-manage-panel')};
+    const catalog = $('#unp-tag-catalog');
+    const assignment = $('#unp-tag-assign-list');
+    const editor = $('#unp-editor-tags');
+    const noteId = editor?.dataset.noteId || '';
+    const stateUrl = new URL(dialog?.dataset.stateUrl || '/api/tags', location.href);
+    const t = (key, params) => window.UNPSettings.translate(key, params);
+    if (!dialog || !list || !filter || !form) return;
+    let state = {tags:[], assigned:[], note_exists:false};
+    let editId = null, busy = false, uncertain = false, mode = 'manage', opener = null, errorKey = '';
+    const el = (tag, className, text) => {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    };
+    const dot = tag => {
+      const node = el('span','unp-tag-dot');
+      node.setAttribute('aria-hidden','true');
+      node.style.setProperty('--unp-tag-color', /^#[0-9a-f]{6}$/i.test(tag.color) ? tag.color : '#64748b');
+      return node;
+    };
+    function label(key) { return el('div','unp-tag-empty',t(key)); }
+    function chip(tag) {
+      const node = el('span','unp-tag-chip');
+      node.title = tag.name;
+      node.append(dot(tag),el('span','unp-tag-chip-label',tag.name));
+      return node;
+    }
+    function show(key = '') { errorKey = key; status.textContent = key ? t(key) : ''; }
+    function resetForm() {
+      editId = null;
+      form.reset();
+      submit.dataset.unpI18n = 'tag.create';
+      submit.textContent = t('tag.create');
+      cancel.hidden = true;
+    }
+    function edit(tag) {
+      editId = tag.id;
+      name.value = tag.name;
+      color.value = tag.color;
+      submit.dataset.unpI18n = 'tag.save';
+      submit.textContent = t('tag.save');
+      cancel.hidden = false;
+      name.focus();
+    }
+    function switchMode(next) {
+      mode = next === 'assign' && noteId ? 'assign' : 'manage';
+      for (const key of Object.keys(tabs)) {
+        tabs[key].setAttribute('aria-pressed', String(key === mode));
+        panels[key].hidden = key !== mode;
+      }
+      $('#unp-tag-title').dataset.unpI18n = `tag.${mode}`;
+      $('#unp-tag-title').textContent = t(`tag.${mode}`);
+    }
+    function render() {
+      const focus = document.activeElement;
+      const focusId = focus?.dataset.tagId;
+      const focusAction = focus?.dataset.action;
+      const scroll = catalog.scrollTop, assignScroll = assignment.scrollTop;
+      catalog.replaceChildren();
+      assignment.replaceChildren();
+      for (const tag of state.tags) {
+        const row = el('div','unp-tag-row');
+        row.append(dot(tag),el('span','unp-tag-chip-label',tag.name));
+        row.querySelector('.unp-tag-chip-label').title = tag.name;
+        for (const action of ['edit','delete']) {
+          const button = el('button',`unp-tag-${action}`,t(`tag.${action}`));
+          button.type = 'button'; button.dataset.tagId = String(tag.id); button.dataset.action = action;
+          button.setAttribute('aria-label',`${t(`tag.${action}`)}: ${tag.name}`);
+          row.append(button);
+        }
+        catalog.append(row);
+        const checkRow = el('label','unp-tag-row');
+        const checkbox = el('input'); checkbox.type = 'checkbox';
+        checkbox.checked = state.assigned.includes(tag.id);
+        checkbox.dataset.tagId = String(tag.id); checkbox.dataset.action = 'assign';
+        checkRow.append(checkbox,dot(tag),el('span','unp-tag-chip-label',tag.name));
+        assignment.append(checkRow);
+      }
+      if (!state.tags.length) catalog.append(label('tag.empty'));
+      if (!state.note_exists) assignment.replaceChildren(label('tag.noNote'));
+      else if (!state.tags.length) assignment.append(label('tag.emptyAssign'));
+      editor?.querySelector('.unp-tag-chips')?.replaceChildren(...state.tags.filter(tag=>state.assigned.includes(tag.id)).map(chip));
+      catalog.scrollTop = scroll; assignment.scrollTop = assignScroll;
+      if (focusId) {
+        const next = [...dialog.querySelectorAll('[data-tag-id]')].find(n=>n.dataset.tagId===focusId && n.dataset.action===focusAction);
+        next?.focus({preventScroll:true});
+      }
+      show(errorKey);
+    }
+    function lock(on) {
+      busy = on;
+      if (on) list.dataset.tagBusy = 'true'; else delete list.dataset.tagBusy;
+      dialog.setAttribute('aria-busy',String(on));
+      for (const node of dialog.querySelectorAll('button,input')) {
+        if (node.id === 'unp-tag-close') node.disabled = on;
+        else node.disabled = on || uncertain || (node === tabs.assign && !noteId);
+      }
+    }
+    async function requestJson(url, options) {
+      const response = await fetch(url, options);
+      if (new URL(response.url || url, location.href).origin !== location.origin) throw new Error('origin');
+      const json = await response.json();
+      if (!response.ok || json.ok !== true) {
+        const error = new Error(json.error || 'database');
+        error.rejected = [400,404,409].includes(response.status) && json.ok === false;
+        throw error;
+      }
+      return json;
+    }
+    async function readState(options) {
+      const url = new URL(stateUrl);
+      if (noteId) url.searchParams.set('note_id',noteId);
+      const value = await requestJson(url,options);
+      if (!Array.isArray(value.tags) || !Array.isArray(value.assigned)) throw new Error('invalid response');
+      state = value;
+    }
+    function refreshFilter(activeTag) {
+      const option = el('option','',t('tag.all')); option.value = '0'; option.dataset.unpI18n = 'tag.all';
+      filter.replaceChildren(option);
+      for (const tag of state.tags) {
+        const node = el('option','',tag.name); node.value = String(tag.id); filter.append(node);
+      }
+      filter.value = activeTag;
+      filter.dataset.applied = activeTag;
+    }
+    async function refreshSidebar(options) {
+      const url = new URL(location.href); url.hash = '';
+      let activeTag = list.dataset.tagId || '0';
+      if (!state.tags.some(tag=>String(tag.id)===activeTag)) {
+        activeTag = '0'; url.searchParams.delete('tag');
+      }
+      if (activeTag !== '0') url.searchParams.set('tag',activeTag);
+      if (noteId) url.searchParams.set('id',noteId);
+      const response = await fetch(url,options);
+      if (!response.ok || new URL(response.url || url,location.href).origin !== location.origin) throw new Error('list refresh');
+      const doc = new DOMParser().parseFromString(await response.text(),'text/html');
+      const snapshot = $('.note-list',doc);
+      if (!snapshot || snapshot.dataset.tagId !== activeTag || snapshot.dataset.favoriteOnly !== list.dataset.favoriteOnly) throw new Error('list snapshot');
+      const scroll = list.scrollTop;
+      const nodes = [...snapshot.children].map(node=>document.importNode(node,true));
+      for (const node of nodes) {
+        if (!node.matches('.unp-note-row')) continue;
+        const link = $('.note-card',node);
+        const selected = node.dataset.unpNoteId === noteId;
+        link.classList.toggle('active',selected);
+        if (selected) link.setAttribute('aria-current','page'); else link.removeAttribute('aria-current');
+      }
+      list.replaceChildren(...nodes);
+      list.dataset.tagId = activeTag;
+      $('.unp-list-heading .count').textContent = String(list.querySelectorAll('.unp-note-row').length);
+      list.scrollTop = scroll;
+      refreshFilter(activeTag);
+      for (const link of document.querySelectorAll('.unp-favorite-filter a')) {
+        const href = new URL(link.href);
+        if (activeTag === '0') href.searchParams.delete('tag'); else href.searchParams.set('tag',activeTag);
+        if (noteId) href.searchParams.set('id',noteId);
+        link.href = href;
+      }
+      // Keep the browser URL consistent when the active tag is deleted.
+      if ((new URL(location.href).searchParams.get('tag') || '0') !== activeTag) {
+        const locationUrl = new URL(location.href);
+        if (activeTag === '0') locationUrl.searchParams.delete('tag'); else locationUrl.searchParams.set('tag',activeTag);
+        history.replaceState(history.state,'',locationUrl);
+      }
+      window.UNPFormatDates?.(list);
+      window.dispatchEvent(new Event('unp:tags-list-updated'));
+    }
+    async function run(action, refresh = true) {
+      if (busy || uncertain || list.getAttribute('aria-busy')==='true' || list.dataset.actionUncertain==='true') return;
+      show(); lock(true);
+      const controller = new AbortController();
+      const timeout = setTimeout(()=>controller.abort(),20000);
+      const options = {credentials:'same-origin', cache:'no-store', signal:controller.signal};
+      try {
+        if (action) await action(options);
+        await readState(options);
+        if (refresh) await refreshSidebar(options);
+        render();
+      } catch (error) {
+        if (error.rejected) {
+          show(`tag.error.${['invalid','duplicate','not_found'].includes(error.message)?error.message:'database'}`);
+          render(); // restore checkboxes to last confirmed values
+        } else {
+          console.warn('Tag state uncertain',error);
+          uncertain = true;
+          list.dataset.tagUncertain = 'true';
+          show('tag.error.uncertain');
+        }
+      } finally { clearTimeout(timeout); lock(false); }
+    }
+    async function open(next, button) {
+      if (list.getAttribute('aria-busy')==='true' || list.dataset.actionUncertain==='true') return;
+      opener = button;
+      if (!dialog.open) dialog.showModal();
+      switchMode(next);
+      if (!uncertain) { resetForm(); await run(null,false); }
+    }
+    $('#unp-tags-open').addEventListener('click',event=>void open('manage',event.currentTarget));
+    $('#unp-tags-assign')?.addEventListener('click',event=>void open('assign',event.currentTarget));
+    $('#unp-tag-close').addEventListener('click',()=>{if(!busy)dialog.close();});
+    dialog.addEventListener('cancel',event=>{if(busy)event.preventDefault();});
+    dialog.addEventListener('close',()=>opener?.focus());
+    for (const [key,button] of Object.entries(tabs)) button.addEventListener('click',()=>switchMode(key));
+    tabs.assign.disabled = !noteId;
+    cancel.addEventListener('click',resetForm);
+    const post = (url,body,options) => requestJson(url,{...options,method:'POST',body});
+    const endpoint = (kind,id) => dialog.dataset[kind].replace('/0/',`/${encodeURIComponent(id)}/`);
+    form.addEventListener('submit',event=>{
+      event.preventDefault();
+      const body = new FormData(form);
+      const url = editId === null ? dialog.dataset.createUrl : endpoint('updateUrl',editId);
+      void run(async options=>{await post(url,body,options);resetForm();});
+    });
+    catalog.addEventListener('click',event=>{
+      const button = event.target.closest('button[data-tag-id]');
+      if (!button || busy || uncertain) return;
+      const tag = state.tags.find(item=>String(item.id)===button.dataset.tagId);
+      if (!tag) return;
+      if (button.dataset.action === 'edit') {edit(tag);return;}
+      if (button.dataset.action === 'delete' && window.confirm(t('tag.deleteConfirm',{name:tag.name}))) {
+        void run(async options=>{await post(endpoint('deleteUrl',tag.id),new FormData(),options);if(editId===tag.id)resetForm();});
+      }
+    });
+    assignment.addEventListener('change',event=>{
+      const checkbox = event.target;
+      if (!checkbox.matches('input[data-tag-id]')) return;
+      const tagId = checkbox.dataset.tagId;
+      const body = new FormData();body.set('assigned',checkbox.checked?'1':'0');
+      const url = dialog.dataset.assignUrl.replace('/0/tags/0',`/${encodeURIComponent(noteId)}/tags/${encodeURIComponent(tagId)}`);
+      void run(options=>post(url,body,options));
+    });
+    filter.dataset.applied = filter.value;
+    filter.addEventListener('change',()=>{
+      if (list.getAttribute('aria-busy')==='true' || busy) {filter.value=filter.dataset.applied;return;}
+      $('#note-search-form').requestSubmit();
+    });
+    function translate() {
+      $('#unp-tags-open').title = t('tag.manage'); $('#unp-tags-open').setAttribute('aria-label',t('tag.manage'));
+      $('#unp-tags-assign')?.setAttribute('aria-label',t('tag.assign'));
+      $('#unp-tag-close').setAttribute('aria-label',t('accessibility.close'));
+      filter.setAttribute('aria-label',t('tag.filter')); filter.title=t('tag.filter');
+      $('.unp-tag-tabs').setAttribute('aria-label',t('tag.manage'));
+      if (dialog.open) {render(); lock(busy);}
+    }
+    window.addEventListener('unp:preferenceschange',translate);
+    translate();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',initTags,{once:true});
+  else initTags();
 })();

@@ -92,15 +92,23 @@
         </div>
         <!-- UNP_FAVORITES_V1 -->
         <nav class="unp-favorite-filter" aria-label="メモの表示範囲">
-          <a href="{{ url_for('index', q=keyword, sort=sort, id=selected_note.id if selected_note else none, favorite=0) }}" {% if not favorite_only %}aria-current="page"{% endif %}>
+          <a href="{{ url_for('index', q=keyword, sort=sort, id=selected_note.id if selected_note else none, favorite=0, tag=tag_id) }}" {% if not favorite_only %}aria-current="page"{% endif %}>
             <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h4"/></svg>
             <span data-unp-i18n="favorite.all">すべて</span>
           </a>
-          <a href="{{ url_for('index', q=keyword, sort=sort, id=selected_note.id if selected_note else none, favorite=1) }}" {% if favorite_only %}aria-current="page"{% endif %}>
+          <a href="{{ url_for('index', q=keyword, sort=sort, id=selected_note.id if selected_note else none, favorite=1, tag=tag_id) }}" {% if favorite_only %}aria-current="page"{% endif %}>
             <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.8 5.8 6.4.9-4.6 4.5 1.1 6.4-5.7-3-5.7 3 1.1-6.4-4.6-4.5 6.4-.9z"/></svg>
             <span data-unp-i18n="favorite.label">お気に入り</span>
           </a>
         </nav>
+        <div class="unp-tag-filterbar">
+          <label class="visually-hidden" for="unp-tag-filter" data-unp-i18n="tag.filter">タグで絞り込む</label>
+          <select id="unp-tag-filter" name="tag" form="note-search-form" aria-label="タグで絞り込む">
+            <option value="0" {% if not tag_id %}selected{% endif %} data-unp-i18n="tag.all">すべてのタグ</option>
+            {% for tag in tags %}<option value="{{ tag.id }}" {% if tag_id == tag.id %}selected{% endif %}>{{ tag.name }}</option>{% endfor %}
+          </select>
+          <button id="unp-tags-open" type="button" class="unp-tag-icon-button" title="タグ管理" aria-label="タグ管理" aria-haspopup="dialog" aria-controls="unp-tag-dialog"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13l-7 7a2 2 0 0 1-3 0L3 13V4h9l8 8a1 1 0 0 1 0 1z"/><circle cx="8" cy="8" r="1.4"/></svg></button>
+        </div>
         <div class="section-heading unp-list-heading">
           <span class="unp-list-title">メモ</span>
           <span class="count">{{ notes|default([])|length }}</span>
@@ -116,12 +124,12 @@
           </div>
         </div>
         <div id="unp-pin-status" class="unp-pin-status" role="status" aria-live="polite"></div>
-        <nav class="note-list" aria-label="メモ" data-favorite-only="{{ 1 if favorite_only else 0 }}">
+        <nav class="note-list" aria-label="メモ" data-favorite-only="{{ 1 if favorite_only else 0 }}" data-tag-id="{{ tag_id }}">
           {% for note in notes|default([]) %}
           <!-- UNP_PIN_UI_V1 -->
           <div class="unp-note-row" data-unp-note-id="{{ note.id }}" data-pinned="{{ 1 if note.is_pinned == 1 else 0 }}" data-favorite="{{ 1 if note.is_favorite == 1 else 0 }}">
           <a
-            href="{{ url_for('index', id=note.id, q=keyword, sort=sort, favorite=1 if favorite_only else 0) }}"
+            href="{{ url_for('index', id=note.id, q=keyword, sort=sort, favorite=1 if favorite_only else 0, tag=tag_id) }}"
             class="note-card{% if selected_note and selected_note.id == note.id %} active{% endif %}"
             {% if selected_note and selected_note.id == note.id %}aria-current="page"{% endif %}
           >
@@ -131,6 +139,7 @@
               class="note-card-date"
               data-utc="{{ note.updated_at|default('') }}"
             >{{ note.updated_at|default('') }}</time>
+            {% if note.tags %}<span class="unp-tag-chips">{% for tag in note.tags %}<span class="unp-tag-chip" title="{{ tag.name }}"><span class="unp-tag-dot" style="--unp-tag-color:{{ tag.color }}" aria-hidden="true"></span><span class="unp-tag-chip-label">{{ tag.name }}</span></span>{% endfor %}</span>{% endif %}
           </a>
           <form class="unp-favorite-form" method="post" action="{{ url_for('set_favorite', note_id=note.id) }}">
             <input type="hidden" name="is_favorite" value="{{ 0 if note.is_favorite == 1 else 1 }}">
@@ -154,6 +163,9 @@
             {% if keyword %}
             <strong>該当するメモはありません</strong>
             <span>検索条件を変更してもう一度お試しください。</span>
+            {% elif tag_id %}
+            <strong>該当するメモはありません</strong>
+            <span>タグや検索条件を変更してください。</span>
             {% elif favorite_only %}
             <strong>お気に入りはありません</strong>
             <span>すべてのメモから星を選択してください。</span>
@@ -198,6 +210,10 @@
           >最終更新：{{ selected_note.updated_at|default('') }}</time>
         </div>
 
+        <div class="unp-editor-tags" id="unp-editor-tags" data-note-id="{{ selected_note.id }}">
+          <button type="button" id="unp-tags-assign" class="unp-tag-icon-button" aria-haspopup="dialog" aria-controls="unp-tag-dialog"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13l-7 7a2 2 0 0 1-3 0L3 13V4h9l8 8a1 1 0 0 1 0 1z"/><circle cx="8" cy="8" r="1.4"/></svg><span data-unp-i18n="tag.assign">メモのタグ</span></button>
+          <div class="unp-tag-chips">{% for tag in selected_note.tags %}<span class="unp-tag-chip" title="{{ tag.name }}"><span class="unp-tag-dot" style="--unp-tag-color:{{ tag.color }}" aria-hidden="true"></span><span class="unp-tag-chip-label">{{ tag.name }}</span></span>{% endfor %}</div>
+        </div>
         <!-- 見出しを重複表示せず、タイトル入力欄を見出しとして扱う -->
         <form
           class="note-edit-form"
@@ -433,5 +449,39 @@
   </div>
 </dialog>
 <!-- UNP_SETTINGS_DIALOG_END -->
+<!-- UNP_TAGS_V1: tag management and assignment, outside note editor form -->
+<dialog id="unp-tag-dialog" class="unp-tag-dialog" aria-labelledby="unp-tag-title"
+  data-state-url="{{ url_for('tag_state') }}" data-create-url="{{ url_for('create_tag') }}"
+  data-update-url="{{ url_for('update_tag', tag_id=0) }}" data-delete-url="{{ url_for('delete_tag', tag_id=0) }}"
+  data-assign-url="{{ url_for('set_note_tag', note_id=0, tag_id=0) }}">
+  <header class="unp-tag-dialog-header">
+    <h2 id="unp-tag-title" data-unp-i18n="tag.manage">タグ管理</h2>
+    <button type="button" class="unp-tag-close" id="unp-tag-close" aria-label="閉じる">×</button>
+  </header>
+  <div class="unp-tag-dialog-body">
+    <div class="unp-tag-tabs" aria-label="タグ操作">
+      <button type="button" id="unp-tag-tab-assign" data-unp-i18n="tag.assign" aria-pressed="false">メモのタグ</button>
+      <button type="button" id="unp-tag-tab-manage" data-unp-i18n="tag.manage" aria-pressed="true">タグ管理</button>
+    </div>
+    <section id="unp-tag-assign-panel" hidden>
+      <div id="unp-tag-assign-list" class="unp-tag-assign-list"></div>
+    </section>
+    <section id="unp-tag-manage-panel">
+      <form id="unp-tag-form" class="unp-tag-form">
+        <div class="unp-tag-form-fields">
+          <label class="unp-tag-name-field"><span data-unp-i18n="tag.name">タグ名</span><input id="unp-tag-name" name="name" required maxlength="40" autocomplete="off"></label>
+          <label class="unp-tag-color-field"><span data-unp-i18n="tag.color">色</span><input id="unp-tag-color" name="color" type="color" value="#64748b"></label>
+        </div>
+        <div class="unp-tag-form-actions">
+          <button type="button" id="unp-tag-cancel" data-unp-i18n="tag.cancel" hidden>キャンセル</button>
+          <button type="submit" id="unp-tag-submit" data-unp-i18n="tag.create">タグを作成</button>
+        </div>
+      </form>
+      <div id="unp-tag-catalog" class="unp-tag-catalog"></div>
+    </section>
+    <p id="unp-tag-status" class="unp-tag-status" role="status" aria-live="polite"></p>
+  </div>
+</dialog>
+<noscript><p class="unp-tag-noscript">タグ管理・付与にはJavaScriptが必要です。タグ絞り込みは検索ボタンで適用できます。</p></noscript>
 </body>
 </html>

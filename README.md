@@ -24,6 +24,9 @@ Python・Flask・SQLite を用いて開発しており、シンプルで直感�
 - 星アイコンでお気に入りの登録・解除（ピン留めとは独立）
 - お気に入りフィルターと検索・並べ替えの組み合わせ
 - お気に入り解除時も編集中の内容を保持。絞り込み中は対象行だけ一覧から除外
+- 複数タグの作成・色変更・名前変更・削除、メモへの付与・解除
+- タグ絞り込み（検索・お気に入り・並べ替えと併用）
+- タグ操作中も現在のエディター・自動保存を維持
 - SQLite によるメモの永続化
 
 ### 保存
@@ -109,10 +112,11 @@ mkdir -p data
 python3 database.py
 python3 migrations/001_add_is_pinned.py
 python3 migrations/002_add_is_favorite.py
+python3 migrations/003_add_tags.py
 ```
 
 `database.py` は既存テーブルを削除せず、存在しない場合に `notes` テーブルを作成します。
-マイグレーションは `is_pinned` と `is_favorite` 列が存在しない場合に追加します。新規環境でも両方の実行が必要です。
+マイグレーションは `is_pinned` と `is_favorite` 列が存在しない場合に追加します。003 は `tags`・`note_tags` とインデックスを作成します。新規環境でも全マイグレーションを実行してください。
 
 既存の DB に対してマイグレーションを実行する場合は、アプリを停止し、先にバックアップを取得してください。
 
@@ -121,6 +125,7 @@ mkdir -p backups
 cp -p data/notes.db "backups/notes-before-migration-$(date +%Y%m%d-%H%M%S).db"
 python3 migrations/001_add_is_pinned.py
 python3 migrations/002_add_is_favorite.py
+python3 migrations/003_add_tags.py
 ```
 
 ### 4. アプリケーションの起動
@@ -148,7 +153,8 @@ UltimateNotePad/
 │
 ├── migrations/                    # DB スキーマの変更
 │   ├── 001_add_is_pinned.py
-│   └── 002_add_is_favorite.py
+│   ├── 002_add_is_favorite.py
+│   └── 003_add_tags.py
 │
 ├── templates/
 │   └── index.html                 # Jinja2 テンプレート
@@ -157,14 +163,16 @@ UltimateNotePad/
 │   ├── css/
 │   │   └── app.css                # 統合スタイル・テーマ・モーション
 │   └── js/
-│       ├── app.js                 # UI・検索・設定・ピン留め・お気に入り
+│       ├── app.js                 # UI・検索・設定・ピン留め・お気に入り・タグ
 │       └── autosave.js            # 独立した保存処理
 │
 ├── learning/
 │   └── sqlite/                    # SQLite の学習用スクリプト
 ├── tests/                         # テストコード
 │   ├── test_routes.py             # Flask の基本ルートテスト
-│   └── test_pin.py                # 一時DBによるピン留め・検索・並べ替えテスト
+│   ├── test_pin.py                # 一時DBによるピン留め・検索・並べ替えテスト
+│   ├── test_favorite.py           # お気に入りの unittest
+│   └── test_tags.py               # タグ CRUD・関連・絞り込み・回帰テスト
 └── legacy/
     └── css/                       # 旧スタイル（現行 UI では未使用）
 ```
@@ -189,6 +197,19 @@ SQLite ファイル：`data/notes.db`
 
 新しいメモは未固定・お気に入り未登録で作成されます。ピン留め・お気に入りの変更だけでは `updated_at` は変更されません。
 
+### `tags` テーブル
+
+| 列 | 型 | 内容 |
+| --- | --- | --- |
+| `id` | INTEGER PRIMARY KEY | タグID |
+| `name` | TEXT NOT NULL UNIQUE | 名前（前後空白を除き1〜40文字、大文字小文字を区別） |
+| `color` | TEXT NOT NULL DEFAULT '#64748b' | #RRGGBB |
+| `created_at` | TEXT NOT NULL | 作成日時 |
+
+### `note_tags` テーブル
+
+`note_id` / `tag_id` は INTEGER NOT NULL、複合主キーです。両外部キーは `ON DELETE CASCADE`。`tag_id` にインデックスを設定しています。アプリの全DB接続で外部キーを有効化します。タグやメモの削除で関連付けのみ自動整理され、タグ削除ではメモ本体を削除しません。タグ操作でメモの `updated_at` は更新しません。
+
 ## Flask ルーティング
 
 | メソッド | パス | 処理 |
@@ -199,6 +220,13 @@ SQLite ファイル：`data/notes.db`
 | POST | `/notes/<note_id>/delete` | メモの削除 |
 | POST | `/notes/<note_id>/pin` | ピン留めの切り替え |
 | POST | `/notes/<note_id>/favorite` | `is_favorite=0` または `1` を設定（成功302、不正値400、対象なし404） |
+| GET | `/api/tags` | タグ一覧・任意の `note_id` の付与済みID |
+| POST | `/tags/create` | `name`, `color` で作成（201） |
+| POST | `/tags/<tag_id>/update` | `name`, `color` を更新（200） |
+| POST | `/tags/<tag_id>/delete` | タグと関連付けを削除（200） |
+| POST | `/notes/<note_id>/tags/<tag_id>` | `assigned=0/1` で解除・付与（200、冪等） |
+
+タグAPIは JSON (`ok` と結果、失敗時 `error`) を返します。不正値400、対象なし404、タグ名重複409、DBエラー500です。
 
 ### 一覧のクエリパラメーター
 
@@ -208,12 +236,15 @@ SQLite ファイル：`data/notes.db`
 | `sort` | `new`（既定） / `old` / `title` |
 | `id` | 選択するメモ ID |
 | `favorite` | `1` のときお気に入りのみ。それ以外は全メモ |
+| `tag` | タグID。0・未指定・存在しないIDは全タグ |
 
-例：`/?favorite=1&q=Python&sort=title`
+例：`/?favorite=1&q=Python&sort=title&tag=2`
 
 検索結果とお気に入り条件に一致するメモだけを対象として、ピン留め状態を優先し、その中で指定された並べ替えを行います。
 
 星ボタンは変更後の値をPOSTし、ピンボタンは反転をPOSTします。JSは両方を直列化し、サーバーの応答と現在の一覧を確認して行だけを更新します。成功テキストは出しません。お気に入り一覧で選択中のメモを解除しても、現在のエディターは次の画面遷移まで維持します。検索・ソート・メモ選択・表示フィルターはGET遷移で、未保存時の既存離脱警告が有効です。JSが無効な場合、登録・解除は通常のPOSTとリダイレクトで行われ、全メモ表示に戻ります。新規作成・削除も既存ルートのリダイレクト仕様に従います。
+
+タグ管理はサイドバーのタグアイコン、付与・解除はエディターの「メモのタグ」から行います。タグ操作はJSで実行し、現在の検索・ソート・お気に入り・タグ条件を維持して一覧だけを更新します。編集中のメモが絞り込み対象から外れてもエディターを次の画面遷移まで維持します。絞り込み中のタグ自体を削除すると全タグに戻ります。タグ管理・付与にはJSが必要です。正常時のテキスト通知は出さず、エラー時のみ表示します。
 
 ## テスト
 
@@ -232,7 +263,14 @@ python3 -m tests.test_routes
 python3 -m tests.test_pin
 ```
 
-お気に入り専用の自動テストは課題10-2Eで追加予定です。
+お気に入り（課題10-2E）の11件の自動テスト、およびタグのテスト：
+
+```bash
+python3 -m unittest tests.test_favorite -v
+python3 -m unittest tests.test_tags -v
+```
+
+両方ともテストごとに一時DBを作成します。タグテストは 003 の再実行、CRUD、入力検証、重複、関連付け、複合フィルター、削除時のCASCADE、既存のルート・テンプレート連携を確認します。個別モジュールで順番に実行してください。
 
 `tests/test_installer.py` と `tests/test_settings_core.js` は旧適用パッケージを前提としたテストです。現行リポジトリには必要なインストーラーや `payload/` が揃っていないため、そのままでは実行できません。
 
@@ -256,8 +294,8 @@ python3 -m tests.test_pin
 - [x] ピン留め
 - [x] ピン留めの自動テスト（課題 10-1E）
 - [x] お気に入り（DB・バックエンド・UI、課題 10-2A〜D）
-- [ ] お気に入りの自動テスト（課題 10-2E）
-- [ ] タグ
+- [x] お気に入りの自動テスト（課題 10-2E）
+- [x] タグ（DB・バックエンド・UI・自動テスト、課題10-3）
 - [ ] フォルダー
 - [ ] アーカイブ・ゴミ箱
 - [ ] メモテンプレート
@@ -293,7 +331,10 @@ python3 -m tests.test_pin
 
 - 2026-11-26 / 10-2D: お気に入りの表示フィルター・星ボタン・ピンと共通の非同期更新、日英・テーマ・モーション対応。セットアップ、DB、ルート、テスト手順も更新。
 
+- 2026-11-27 / 10-3: タグのCRUD、複数関連付け、絞り込み、日英・テーマ対応、外部キー・テスト追加。
+
 <!-- UNP_FAVORITES_V1 -->
+<!-- UNP_TAGS_V1 -->
 
 ## Project
 

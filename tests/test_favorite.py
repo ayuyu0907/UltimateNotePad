@@ -253,7 +253,5 @@ class FavoriteTests(unittest.TestCase):
         # ⑭ DBの状態が変更されていないか確認
         self.assertEqual(get_favorite_status(1), 0)
 
-
-
 if __name__ == "__main__":
     unittest.main()
